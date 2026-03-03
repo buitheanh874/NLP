@@ -1,36 +1,63 @@
-# Base Project Starter
+﻿# NLP Project: E-commerce Review Understanding
 
-The `base` folder is the minimal starting point before work is split across team members.
+Repository da duoc don gon de chi giu cac thanh phan phuc vu mon NLP.
 
-## Initial Scope
+## Scope
+- Task A: Sentiment classification (Negative/Positive/Uncertain) voi TF-IDF + chi-square + logistic regression.
+- Task B: Multi-label issue extraction (classic ML, one-vs-rest).
+- Task C: Transformer extension va syllabus-alignment benchmarks.
 
-1. Set up the environment.
-2. Define the shared directory structure.
-3. Create a minimal NLP pipeline scaffold.
-4. Define input and output conventions.
+## Setup
+```bash
+pip install -r requirements.txt
+pip install -r requirements-optional.txt
+```
 
-## Minimal Structure
+## Data
+- Main corpus: `data/Gift_Cards.jsonl` (bat buoc co cot `text`, `rating`).
+- Manual issue labels: `data/issue_labels.csv`.
 
-- `requirements.txt`: Initial dependencies.
-- `src/bootstrap_pipeline.py`: Starter pipeline script.
-- `data/README.md`: Input data notes.
-- `results/README.md`: Expected output notes.
+## Core Commands
+```bash
+# Sentiment demo
+python demo.py "great product!" "terrible experience"
 
-## Quick Start
+# Run full classic NLP sentiment pipeline (steps 01-10)
+python -m src.run_all --data_path data/Gift_Cards.jsonl
 
-1. `pip install -r requirements.txt`
-2. `python src/bootstrap_pipeline.py`
+# Run a single sentiment step (module name dm2_steps la ten legacy)
+python -m src.dm2_steps 06b --data_path data/Gift_Cards.jsonl --enable_negation_tagging --enable_char_ngrams
 
-## Team Handoff
+# Train/evaluate issue classifier
+python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl
 
-After the `base` stage, each member continues work in:
+# Issue inference
+python -m src.issue_steps predict --text "good but slow delivery"
+```
 
-- `BTA`
-- `An`
-- `Bao`
-- `Chuong`
-- `Duc`
-- `Tuan`
-- `Tung`
+## Transformer Extension (Optional)
+```bash
+python -m src.nlp_ext transformer_finetune --data_path data/Gift_Cards.jsonl
+python demo_transformer.py "not bad at all"
+```
 
-Merging all member folders restores the full project.
+## Interactive Demo UI (Optional)
+```bash
+pip install -r requirements-optional.txt
+streamlit run demo_app.py
+```
+
+## Report
+- English report: `results/reports/NLP_project_report.tex` and `.pdf`
+- Vietnamese report: `results/reports/NLP_project_report_vi.tex` and `.pdf`
+- Rubric checklist and defense flow: `results/reports/NLP_max_score_checklist_vi.md`
+
+## Main Artifacts
+- `results/dm2_steps/`: classic sentiment experiment outputs.
+- `results/issue_steps/`: issue extraction metrics and plots.
+- `results/nlp_ext/`: transformer and syllabus-upgrade outputs.
+- `models/`: trained artifacts for demo/inference.
+
+## Notes
+- Chi su dung text feature, khong dung metadata.
+- Split: rating 1-2 -> negative, 4-5 -> positive, rating 3 giu cho uncertainty analysis.
