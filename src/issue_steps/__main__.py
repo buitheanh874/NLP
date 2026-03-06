@@ -68,6 +68,13 @@ def main() -> None:
         action="store_true",
         help="Initialize label columns with 0 instead of blank",
     )
+    make_template.add_argument(
+        "--queue_strategy",
+        type=str,
+        choices=["priority", "random"],
+        default="priority",
+        help="Queue sampling strategy when --only_queue and --sample_size are both used",
+    )
 
     validate = subparsers.add_parser(
         "validate",
@@ -84,6 +91,16 @@ def main() -> None:
         type=Path,
         default=Path(DEFAULT_RESULTS_DIR),
         help="Where to save validation outputs",
+    )
+    validate.add_argument(
+        "--strict_other",
+        action="store_true",
+        help="Fail if rows contain `other=1` together with any specific label",
+    )
+    validate.add_argument(
+        "--fail_on_duplicate_conflicts",
+        action="store_true",
+        help="Fail if duplicate ids have conflicting label vectors",
     )
 
     merge_batches = subparsers.add_parser(

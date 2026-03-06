@@ -156,7 +156,22 @@ def _write_labeling_guidelines(path: Path) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _infer_queue_stage1_labels(df: pd.DataFrame, base_dir: Path) -> Tuple[pd.Series, str]:
+def _queue_priority_score(clean_text: str, stage1_label: str, stage1_prob: float) -> float:
+    text = str(clean_text)
+    tokens = len(text.split())
+    margin = abs(float(stage1_prob) - 0.50)
+    uncertainty_score = 1.0 - min(1.0, margin * 2.0)
+    lower = f" {text.lower()} "
+    has_contrast = any(marker in lower for marker in [" but ", " however ", " although ", " though ", " yet "])
+
+    label_bonus = 0.15 if str(stage1_label) == "NEEDS_ATTENTION" else 0.05
+    contrast_bonus = 0.10 if has_contrast else 0.0
+    length_penalty = -0.20 if tokens < 3 else 0.0
+    score = uncertainty_score + label_bonus + contrast_bonus + length_penalty
+    return float(max(0.0, round(score, 6)))
+
+
+def _infer_queue_stage1_labels(df: pd.DataFrame, base_dir: Path) -> Tuple[pd.DataFrame, str]:
     texts = df["text"].fillna("").astype(str).tolist()
     complaint_mask = np.array([has_complaint_signal(t) for t in texts], dtype=bool)
 
@@ -179,15 +194,38 @@ def _infer_queue_stage1_labels(df: pd.DataFrame, base_dir: Path) -> Tuple[pd.Ser
         labels[probs <= 0.40] = "NEGATIVE"
         labels[(probs > 0.40) & complaint_mask] = "NEEDS_ATTENTION"
         labels[(labels == "UNCERTAIN") & (probs >= 0.60)] = "POSITIVE"
-        return pd.Series(labels, index=df.index), "stage1_model_policy"
+        return (
+            pd.DataFrame(
+                {
+                    "stage1_label": labels,
+                    "stage1_prob": probs,
+                },
+                index=df.index,
+            ),
+            "stage1_model_policy",
+        )
 
     rating = pd.to_numeric(df["rating"], errors="coerce").fillna(3.0).to_numpy()
-    labels = np.where(
+    probs = np.where(
         rating <= 2.0,
+        0.20,
+        np.where(complaint_mask, 0.45, np.where(rating >= 4.0, 0.80, 0.50)),
+    ).astype(float)
+    labels = np.where(
+        probs <= 0.40,
         "NEGATIVE",
-        np.where(complaint_mask, "NEEDS_ATTENTION", np.where(rating >= 4.0, "POSITIVE", "UNCERTAIN")),
+        np.where(complaint_mask, "NEEDS_ATTENTION", np.where(probs >= 0.60, "POSITIVE", "UNCERTAIN")),
     )
-    return pd.Series(labels, index=df.index), "rating_keyword_fallback"
+    return (
+        pd.DataFrame(
+            {
+                "stage1_label": labels,
+                "stage1_prob": probs,
+            },
+            index=df.index,
+        ),
+        "rating_keyword_fallback",
+    )
 
 
 def cmd_make_template(args) -> None:
@@ -203,13 +241,34 @@ def cmd_make_template(args) -> None:
     )
 
     if args.only_queue:
-        stage1_labels, source = _infer_queue_stage1_labels(df, base_dir=Path("."))
-        df = df.assign(stage1_label=stage1_labels)
+        stage1_frame, source = _infer_queue_stage1_labels(df, base_dir=Path("."))
+        df = df.join(stage1_frame)
         df = df[df["stage1_label"].isin(["NEGATIVE", "NEEDS_ATTENTION"])].copy()
+        df["queue_priority"] = df.apply(
+            lambda row: _queue_priority_score(
+                clean_text=row["clean_text"],
+                stage1_label=row["stage1_label"],
+                stage1_prob=row["stage1_prob"],
+            ),
+            axis=1,
+        )
         print(f"[make_template] only_queue enabled using {source}: retained {len(df)} rows.")
 
     if args.sample_size is not None and args.sample_size > 0 and args.sample_size < len(df):
-        df = df.sample(n=args.sample_size, random_state=args.seed).copy()
+        queue_strategy = str(getattr(args, "queue_strategy", "priority"))
+        use_priority = bool(args.only_queue and queue_strategy == "priority" and "queue_priority" in df.columns)
+        if use_priority:
+            df = (
+                df.sort_values(
+                    ["queue_priority", "stage1_prob", "id"],
+                    ascending=[False, True, True],
+                    kind="mergesort",
+                )
+                .head(args.sample_size)
+                .copy()
+            )
+        else:
+            df = df.sample(n=args.sample_size, random_state=args.seed).copy()
 
     df["__id_sort_key"] = df["id"].map(_template_id_sort_key)
     df = (
@@ -222,7 +281,12 @@ def cmd_make_template(args) -> None:
         df[label] = 0 if args.init_zero else ""
     df["notes"] = ""
 
-    output_cols = ["id", "rating", "text", "clean_text", "suggested_tags"] + ISSUE_LABELS + ["notes"]
+    output_cols = ["id", "rating", "text", "clean_text", "suggested_tags"]
+    if "stage1_label" in df.columns:
+        output_cols += ["stage1_label", "stage1_prob"]
+    if "queue_priority" in df.columns:
+        output_cols += ["queue_priority"]
+    output_cols += ISSUE_LABELS + ["notes"]
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df[output_cols].to_csv(args.out, index=False, encoding="utf-8")
 
@@ -256,6 +320,83 @@ def _template_id_sort_key(value) -> Tuple[int, int, str]:
         return (0, int(normalized), normalized)
     except ValueError:
         return (1, 0, normalized.casefold())
+
+
+def _build_group_quality_table(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    if group_col not in df.columns:
+        return pd.DataFrame()
+
+    group_values = (
+        df[group_col]
+        .fillna("unknown")
+        .astype(str)
+        .str.strip()
+        .replace("", "unknown")
+    )
+    label_df, valid_mask = _coerce_label_frame(df)
+    label_binary = label_df.where(label_df.isin([0, 1]), 0).fillna(0).astype(int)
+    row_sums = label_binary.sum(axis=1).astype(float)
+    contradiction_mask = (label_binary["other"] == 1) & (label_binary.drop(columns=["other"]).sum(axis=1) > 0)
+    zero_label_mask = row_sums == 0
+
+    work = pd.DataFrame(
+        {
+            "group_key": group_values.values,
+            "rows": np.ones(len(df), dtype=int),
+            "valid_rows": valid_mask.astype(int).values,
+            "zero_label_rows": zero_label_mask.astype(int).values,
+            "contradiction_rows": contradiction_mask.astype(int).values,
+            "avg_label_cardinality": row_sums.values,
+        }
+    )
+    summary = (
+        work.groupby("group_key", dropna=False)
+        .agg(
+            rows=("rows", "sum"),
+            valid_rows=("valid_rows", "sum"),
+            zero_label_rows=("zero_label_rows", "sum"),
+            contradiction_rows=("contradiction_rows", "sum"),
+            avg_label_cardinality=("avg_label_cardinality", "mean"),
+        )
+        .reset_index()
+        .rename(columns={"group_key": group_col})
+    )
+
+    global_prevalence = label_binary.mean(axis=0)
+    by_group_prevalence = label_binary.groupby(group_values, dropna=False).mean()
+    prevalence_drift = (
+        by_group_prevalence.sub(global_prevalence, axis=1).abs().mean(axis=1).rename("label_prevalence_drift")
+    )
+    summary = summary.merge(
+        prevalence_drift.reset_index().rename(columns={"index": group_col}),
+        on=group_col,
+        how="left",
+    )
+
+    summary["valid_rate"] = summary["valid_rows"] / summary["rows"].clip(lower=1)
+    summary["zero_label_rate"] = summary["zero_label_rows"] / summary["rows"].clip(lower=1)
+    summary["contradiction_rate"] = summary["contradiction_rows"] / summary["rows"].clip(lower=1)
+    summary = summary.sort_values(["rows", group_col], ascending=[False, True], kind="mergesort").reset_index(drop=True)
+    return summary[
+        [
+            group_col,
+            "rows",
+            "valid_rows",
+            "valid_rate",
+            "zero_label_rows",
+            "zero_label_rate",
+            "contradiction_rows",
+            "contradiction_rate",
+            "avg_label_cardinality",
+            "label_prevalence_drift",
+        ]
+    ]
+
+
+def _write_quality_table_md(path: Path, title: str, table: pd.DataFrame) -> None:
+    lines = [f"# {title}", "", f"- groups: {len(table)}", "", table.to_markdown(index=False), ""]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def cmd_merge_batches(args) -> None:
@@ -351,6 +492,26 @@ def cmd_merge_batches(args) -> None:
                 "[merge_batches] conflicts found. Resolve conflicts first, then rerun."
             )
 
+    source_quality_csv: Optional[Path] = None
+    source_quality_md: Optional[Path] = None
+    source_quality_df = _build_group_quality_table(merged, "__source_file")
+    if not source_quality_df.empty:
+        source_quality_csv = args.output.with_name(args.output.stem + "_quality_by_source.csv")
+        source_quality_md = args.output.with_name(args.output.stem + "_quality_by_source.md")
+        source_quality_csv.parent.mkdir(parents=True, exist_ok=True)
+        source_quality_df.to_csv(source_quality_csv, index=False, encoding="utf-8")
+        _write_quality_table_md(source_quality_md, "Batch Quality by Source File", source_quality_df)
+
+    annotator_quality_csv: Optional[Path] = None
+    annotator_quality_md: Optional[Path] = None
+    annotator_quality_df = _build_group_quality_table(merged, "annotator")
+    if not annotator_quality_df.empty:
+        annotator_quality_csv = args.output.with_name(args.output.stem + "_quality_by_annotator.csv")
+        annotator_quality_md = args.output.with_name(args.output.stem + "_quality_by_annotator.md")
+        annotator_quality_csv.parent.mkdir(parents=True, exist_ok=True)
+        annotator_quality_df.to_csv(annotator_quality_csv, index=False, encoding="utf-8")
+        _write_quality_table_md(annotator_quality_md, "Batch Quality by Annotator", annotator_quality_df)
+
     dedup = (
         merged.sort_values(["id", "__source_mtime", "__row_order"], ascending=[True, False, False])
         .groupby("id", as_index=False)
@@ -382,6 +543,14 @@ def cmd_merge_batches(args) -> None:
     ]
     if conflict_id_list:
         summary_lines.append(f"- conflict_csv: {conflict_out}")
+    if source_quality_csv is not None:
+        summary_lines.append(f"- source_quality_csv: {source_quality_csv}")
+    if source_quality_md is not None:
+        summary_lines.append(f"- source_quality_md: {source_quality_md}")
+    if annotator_quality_csv is not None:
+        summary_lines.append(f"- annotator_quality_csv: {annotator_quality_csv}")
+    if annotator_quality_md is not None:
+        summary_lines.append(f"- annotator_quality_md: {annotator_quality_md}")
     summary_out.parent.mkdir(parents=True, exist_ok=True)
     summary_out.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
 
@@ -421,6 +590,9 @@ def _label_stats_markdown(
     total_rows: int,
     cardinality: float,
     contradiction_count: int,
+    duplicate_id_count: int,
+    duplicate_row_count: int,
+    duplicate_conflict_id_count: int,
 ) -> str:
     lines = [
         "# Stage 2 Label Validation Summary",
@@ -428,6 +600,9 @@ def _label_stats_markdown(
         f"- Rows: {total_rows}",
         f"- Label cardinality (avg labels/review): {cardinality:.3f}",
         f"- Contradictions (`other=1` with other labels): {contradiction_count}",
+        f"- Duplicate ids: {duplicate_id_count}",
+        f"- Duplicate rows: {duplicate_row_count}",
+        f"- Duplicate ids with conflicting labels: {duplicate_conflict_id_count}",
         "",
         "## Label Frequencies",
         "",
@@ -439,11 +614,39 @@ def _label_stats_markdown(
     return "\n".join(lines) + "\n"
 
 
+def _find_duplicate_label_conflicts(ids: pd.Series, label_df: pd.DataFrame) -> pd.DataFrame:
+    work = label_df.copy()
+    work.insert(0, "id", ids.astype(str).values)
+    duplicated_ids = work["id"].value_counts()
+    duplicated_ids = duplicated_ids[duplicated_ids > 1].index.tolist()
+    if not duplicated_ids:
+        return pd.DataFrame(columns=["id"] + ISSUE_LABELS)
+
+    dup_rows = work[work["id"].isin(duplicated_ids)].copy()
+    conflict_mask = (
+        dup_rows.groupby("id")[ISSUE_LABELS]
+        .nunique(dropna=False)
+        .gt(1)
+        .any(axis=1)
+    )
+    conflict_ids = conflict_mask[conflict_mask].index.tolist()
+    if not conflict_ids:
+        return pd.DataFrame(columns=["id"] + ISSUE_LABELS)
+    return dup_rows[dup_rows["id"].isin(conflict_ids)].copy()
+
+
 def cmd_validate(args) -> None:
     df = pd.read_csv(args.labels_path)
     errors = _schema_errors(df)
     if errors:
         raise SystemExit("[validate] schema errors:\n- " + "\n- ".join(errors))
+    df = df.copy()
+    df["id"] = df["id"].apply(_normalize_id)
+    missing_id_rows = int((df["id"] == "").sum())
+    if missing_id_rows > 0:
+        raise SystemExit(
+            f"[validate] Found {missing_id_rows} rows with missing/invalid `id` values."
+        )
 
     label_df, valid_mask = _coerce_label_frame(df)
     invalid_rows = (~valid_mask).sum()
@@ -452,6 +655,8 @@ def cmd_validate(args) -> None:
             f"[validate] Found {int(invalid_rows)} rows with non-binary label values; labels must be 0/1."
         )
     label_df = label_df.astype(int)
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     row_sums = label_df.sum(axis=1)
     zero_label_rows = int((row_sums == 0).sum())
@@ -464,12 +669,52 @@ def cmd_validate(args) -> None:
     contradiction_mask = (label_df["other"] == 1) & (label_df.drop(columns=["other"]).sum(axis=1) > 0)
     contradiction_count = int(contradiction_mask.sum())
     if contradiction_count > 0:
-        print(
-            f"[validate] warning: {contradiction_count} rows have `other=1` with additional labels."
-        )
+        if bool(getattr(args, "strict_other", False)):
+            raise SystemExit(
+                f"[validate] Found {contradiction_count} rows with `other=1` and additional labels."
+            )
+        print(f"[validate] warning: {contradiction_count} rows have `other=1` with additional labels.")
 
-    out_dir = args.output_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
+    duplicate_counts = df["id"].value_counts()
+    duplicate_id_count = int((duplicate_counts > 1).sum())
+    duplicate_row_count = int(duplicate_counts[duplicate_counts > 1].sum()) if duplicate_id_count > 0 else 0
+
+    duplicate_conflicts = _find_duplicate_label_conflicts(df["id"], label_df)
+    duplicate_conflict_id_count = int(duplicate_conflicts["id"].nunique()) if not duplicate_conflicts.empty else 0
+
+    duplicate_summary = pd.DataFrame(
+        {
+            "metric": [
+                "duplicate_id_count",
+                "duplicate_row_count",
+                "duplicate_conflict_id_count",
+            ],
+            "value": [
+                duplicate_id_count,
+                duplicate_row_count,
+                duplicate_conflict_id_count,
+            ],
+        }
+    )
+    duplicate_summary_csv = out_dir / "01_duplicate_id_summary.csv"
+    duplicate_summary.to_csv(duplicate_summary_csv, index=False, encoding="utf-8")
+
+    duplicate_conflict_csv: Optional[Path] = None
+    if duplicate_conflict_id_count > 0:
+        duplicate_conflict_csv = out_dir / "01_duplicate_id_conflicts.csv"
+        duplicate_conflict_view = duplicate_conflicts.copy()
+        duplicate_conflict_view.insert(1, "__row_index", duplicate_conflict_view.index.astype(int))
+        duplicate_conflict_view = duplicate_conflict_view.sort_values(["id", "__row_index"], kind="mergesort")
+        duplicate_conflict_view.to_csv(duplicate_conflict_csv, index=False, encoding="utf-8")
+        if bool(getattr(args, "fail_on_duplicate_conflicts", False)):
+            raise SystemExit(
+                f"[validate] Found {duplicate_conflict_id_count} duplicate ids with conflicting labels. "
+                f"Details: {duplicate_conflict_csv}"
+            )
+        print(
+            f"[validate] warning: {duplicate_conflict_id_count} duplicate ids have conflicting labels. "
+            f"Details: {duplicate_conflict_csv}"
+        )
 
     counts = label_df.sum(axis=0).astype(int)
     stats_df = pd.DataFrame(
@@ -491,6 +736,9 @@ def cmd_validate(args) -> None:
             total_rows=len(label_df),
             cardinality=cardinality,
             contradiction_count=contradiction_count,
+            duplicate_id_count=duplicate_id_count,
+            duplicate_row_count=duplicate_row_count,
+            duplicate_conflict_id_count=duplicate_conflict_id_count,
         ),
         encoding="utf-8",
     )
@@ -507,6 +755,9 @@ def cmd_validate(args) -> None:
     print(f"[validate] wrote {stats_csv}")
     print(f"[validate] wrote {stats_md}")
     print(f"[validate] wrote {stats_png}")
+    print(f"[validate] wrote {duplicate_summary_csv}")
+    if duplicate_conflict_csv is not None:
+        print(f"[validate] wrote {duplicate_conflict_csv}")
 
 
 def _labelset_codes(y: np.ndarray) -> np.ndarray:
