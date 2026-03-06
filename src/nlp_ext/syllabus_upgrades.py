@@ -385,6 +385,156 @@ def run_classic_syllabus_bench(args) -> None:
     print(f"[NLP EXT] Syllabus bench saved to {out_dir}")
 
 
+def run_classic_ablation(args) -> None:
+    np.random.seed(SEED)
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df = load_data(args.data_path)
+    splits = make_splits(
+        df,
+        enable_abbrev_norm=args.enable_abbrev_norm,
+        enable_negation=args.enable_negation_tagging,
+        negation_window=args.negation_window,
+    )
+
+    y_train = splits.train["label"].values
+    y_val = splits.val["label"].values
+    y_test = splits.test["label"].values
+
+    train_index = np.arange(len(y_train))
+    if int(args.max_train_samples) > 0 and len(train_index) > int(args.max_train_samples):
+        rng = np.random.default_rng(SEED)
+        idx_neg = np.where(y_train == 0)[0]
+        idx_pos = np.where(y_train == 1)[0]
+        neg_target = int(round(int(args.max_train_samples) * (len(idx_neg) / len(y_train))))
+        neg_target = min(len(idx_neg), max(1, neg_target))
+        pos_target = int(args.max_train_samples) - neg_target
+        pos_target = min(len(idx_pos), max(1, pos_target))
+        sampled_neg = rng.choice(idx_neg, size=neg_target, replace=False)
+        sampled_pos = rng.choice(idx_pos, size=pos_target, replace=False)
+        train_index = np.concatenate([sampled_neg, sampled_pos])
+        rng.shuffle(train_index)
+
+    ablation_specs = [
+        _pick_variant("V0"),
+        _pick_variant("V2"),
+        _pick_variant("V5"),
+        _pick_variant("V6"),
+        _pick_variant("V7"),
+    ]
+
+    rows: List[Dict[str, object]] = []
+    for spec in ablation_specs:
+        vec_bundle = fit_vectorizer(
+            splits,
+            variant=spec,
+            enable_abbrev_norm=args.enable_abbrev_norm,
+            negation_window=args.negation_window,
+        )
+        model = LogisticRegression(
+            penalty="l2",
+            solver="liblinear",
+            max_iter=800,
+            class_weight="balanced",
+            random_state=SEED,
+        )
+        t0 = time.time()
+        model.fit(vec_bundle.X_train[train_index], y_train[train_index])
+        train_seconds = time.time() - t0
+
+        val_probs = model.predict_proba(vec_bundle.X_val)[:, 1]
+        test_probs = model.predict_proba(vec_bundle.X_test)[:, 1]
+        val_pred = (val_probs >= 0.5).astype(int)
+        test_pred = (test_probs >= 0.5).astype(int)
+        val_metrics = _metrics_from_labels(y_val, val_pred)
+        test_metrics = _metrics_from_labels(y_test, test_pred)
+
+        test_dec = _decision_from_probs(
+            test_probs,
+            splits.test["clean_text"].tolist(),
+            args.threshold_low,
+            args.threshold_high,
+        )
+        test_sel = selective_metrics(y_test, test_dec)
+
+        rows.append(
+            {
+                "variant": spec.name,
+                "description": spec.description,
+                "use_negation": int(spec.use_negation),
+                "use_char_ngrams": int(spec.use_char),
+                "use_clause_split": int(spec.use_clause),
+                "use_lexicon": int(spec.use_lexicon),
+                "split": "val",
+                "train_seconds": train_seconds,
+                **val_metrics,
+                "coverage": np.nan,
+                "selective_recall_0": np.nan,
+                "selective_precision_0": np.nan,
+                "selective_f2_0": np.nan,
+            }
+        )
+        rows.append(
+            {
+                "variant": spec.name,
+                "description": spec.description,
+                "use_negation": int(spec.use_negation),
+                "use_char_ngrams": int(spec.use_char),
+                "use_clause_split": int(spec.use_clause),
+                "use_lexicon": int(spec.use_lexicon),
+                "split": "test",
+                "train_seconds": train_seconds,
+                **test_metrics,
+                "coverage": float(test_sel.get("coverage", np.nan)),
+                "selective_recall_0": float(test_sel.get("selective_recall_0", np.nan)),
+                "selective_precision_0": float(test_sel.get("selective_precision_0", np.nan)),
+                "selective_f2_0": float(test_sel.get("selective_f2_0", np.nan)),
+            }
+        )
+
+    ablation_df = pd.DataFrame(rows)
+    ablation_csv = out_dir / "nlp_ablation.csv"
+    ablation_df.to_csv(ablation_csv, index=False)
+
+    test_df = ablation_df[ablation_df["split"] == "test"].copy()
+    test_df = test_df.sort_values(
+        by=["recall_0", "f2_0", "precision_0"],
+        ascending=[False, False, False],
+        kind="mergesort",
+    )
+    best = test_df.iloc[0]
+
+    plt.figure(figsize=(8.5, 4.2))
+    plt.bar(test_df["variant"], test_df["f2_0"], color="#2f6f9f")
+    plt.ylim(0.0, 1.0)
+    plt.ylabel("Test F2_0")
+    plt.title("Classic ablation: F2_0 by variant")
+    plt.tight_layout()
+    plt.savefig(out_dir / "nlp_ablation_f2.png", dpi=220)
+    plt.close()
+
+    summary_lines = [
+        "# Classic Ablation Summary",
+        "",
+        f"Threshold band for selective metrics: {args.threshold_low:.2f}/{args.threshold_high:.2f}",
+        f"Train samples used: {len(train_index)} (max_train_samples={args.max_train_samples})",
+        "Variants include targeted toggles for negation, character n-grams, and lexicon features.",
+        "",
+        "Best test variant under negative-first criterion:",
+        (
+            f"variant={best['variant']}, recall_0={best['recall_0']:.3f}, "
+            f"precision_0={best['precision_0']:.3f}, f2_0={best['f2_0']:.3f}"
+        ),
+        "",
+        "Files:",
+        "nlp_ablation.csv",
+        "nlp_ablation_f2.png",
+    ]
+    (out_dir / "nlp_ablation_summary.md").write_text("\n".join(summary_lines), encoding="utf-8")
+    print(f"[NLP EXT] Classic ablation outputs saved to {out_dir}")
+
+
 def run_rnn_lstm_baseline(args) -> None:
     try:
         import torch
@@ -925,6 +1075,7 @@ def build_course_fit_matrix(args) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     bench_path = out_dir / "nlp_syllabus_bench_test_summary.csv"
+    ablation_path = out_dir / "nlp_ablation.csv"
     ngram_path = out_dir / "nlp_ngram_lm_metrics.csv"
     rnn_path = out_dir / "nlp_rnn_lstm_metrics.csv"
     mlm_path = out_dir / "nlp_mlm_probe.csv"
@@ -933,6 +1084,7 @@ def build_course_fit_matrix(args) -> None:
     issue_path = Path("results/issue_steps_char_demo/02_metrics_overall.csv")
 
     has_bench = bench_path.exists()
+    has_ablation = ablation_path.exists()
     has_ngram = ngram_path.exists()
     has_rnn = rnn_path.exists()
     has_mlm = mlm_path.exists()
@@ -944,14 +1096,14 @@ def build_course_fit_matrix(args) -> None:
     topics = [
         ("Probability", 1.0 if has_ngram or has_bench else 0.5),
         ("Regular Expressions", 0.5),
-        ("Evaluation Measures", 1.0),
+        ("Evaluation Measures", 1.0 if has_bench or has_ablation or has_issue else 0.7),
         ("N-Gram Language Models", 1.0 if has_ngram else 0.2),
         ("Naive Bayes", 1.0 if has_bench else 0.2),
         ("Perceptron", 1.0 if has_bench else 0.2),
         ("Logistic Regression", 1.0),
         ("Feed-forward Neural Networks", 1.0 if has_bench else 0.3),
         ("Pytorch Basic", 1.0 if has_rnn or has_trans or has_mlm else 0.2),
-        ("Vector Semantics and Embeddings", 0.8 if has_bench else 0.4),
+        ("Vector Semantics and Embeddings", 0.8 if has_bench or has_ablation else 0.4),
         ("Recurrent Neural Networks", 1.0 if has_rnn else 0.2),
         ("Transformers and LLMs", 1.0 if has_trans or has_mlm or has_llm_prompt else 0.3),
         ("Masked Language Models", 1.0 if has_mlm else 0.2),

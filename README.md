@@ -46,6 +46,9 @@ python -m src.dm2_steps 06b --data_path data/Gift_Cards.jsonl --enable_negation_
 # 3) Issue classifier train/eval
 python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl
 
+# 3b) Level-3 issue training: per-label class-weight search + calibration + threshold tuning
+python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl --enable_char_ngrams --enable_chi2_topk --tune_thresholds --class_weight_search --calibrate_probs --calibration_method sigmoid --include_svm_baseline
+
 # 4) Transformer fine-tuning (optional)
 python -m src.nlp_ext transformer_finetune --data_path data/Gift_Cards.jsonl
 
@@ -67,7 +70,10 @@ python -m src.nlp_ext mlm_probe --output_dir results/nlp_ext/syllabus_upgrade
 # 9) LLM application proxy (prompt-style semantic baseline)
 python -m src.nlp_ext llm_prompt_baseline --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade
 
-# 10) Unified cross-task scoreboard
+# 10) Classic ablation study (negation/char/lexicon toggles)
+python -m src.nlp_ext classic_ablation --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --threshold_low 0.40 --threshold_high 0.60
+
+# 11) Unified cross-task scoreboard
 python scripts/build_scoreboard.py
 ```
 
@@ -110,6 +116,7 @@ Demo smoke inputs and expected behavior:
 - `results/dm2_steps/`: classic sentiment artifacts.
 - `results/issue_steps/`: multi-label issue metrics and plots.
 - `results/nlp_ext/`: transformer and syllabus-upgrade outputs.
+- `results/nlp_ext/syllabus_upgrade/nlp_ablation.csv`: ablation results for classic variants.
 - `results/reports/`: project reports (EN + VI).
 - `models/`: trained artifacts used by demos.
 - `*/_run_metadata/`: per-command run metadata JSON (args, git commit, status, duration).

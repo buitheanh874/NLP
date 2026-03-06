@@ -1,5 +1,6 @@
 task,model,split,recall_0,precision_0,f2_0,micro_f1,macro_f1,coverage,aux_score,missed_negative_rate,source_file
-issue_multilabel,ovr_logreg,test,,,,0.7648546144121365,0.3811535373573158,,,,results\issue_steps\02_metrics_overall.csv
+issue_multilabel,ovr_logreg,test,,,,0.7826182618261827,0.388776813338018,,,,results\issue_steps\02_metrics_overall.csv
+issue_multilabel,ovr_linearsvm,test,,,,0.7698735804585387,0.3922636519561565,,,,results\issue_steps\02_metrics_overall.csv
 llm_prompt_sentiment,llm_prompt_semantic,test,0.5133802816901408,0.4494451294697903,0.4991783073130649,,,,,0.4866197183098592,results\nlp_ext\syllabus_upgrade\nlp_llm_prompt_metrics.csv
 mlm_probe,masked_lm_hit_at_k,probe,,,,,,,0.6,,results\nlp_ext\syllabus_upgrade\nlp_mlm_probe.csv
 rnn_lstm_sentiment,lstm_text,test,0.9109154929577464,0.2671416769929781,0.6146645124501046,,,,,0.08908450704225357,results\nlp_ext\syllabus_upgrade\nlp_rnn_lstm_metrics.csv

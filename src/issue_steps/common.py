@@ -1,11 +1,12 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import joblib
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin, clone
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.dummy import DummyClassifier
 from sklearn.feature_selection import chi2
 from sklearn.linear_model import LogisticRegression
@@ -288,7 +289,7 @@ class PerLabelOVRModel:
 
 def _build_base_estimator(
     model_kind: str = "logreg",
-    class_weight: Optional[str] = "balanced",
+    class_weight: Optional[object] = "balanced",
     random_state: int = SEED,
 ):
     if class_weight == "none":
@@ -313,20 +314,27 @@ def train_per_label_ovr(
     y: np.ndarray,
     label_names: Sequence[str],
     model_kind: str = "logreg",
-    class_weight: Optional[str] = "balanced",
+    class_weight: Optional[object] = "balanced",
+    class_weight_map: Optional[Dict[str, object]] = None,
+    calibrate_probs: bool = False,
+    calibration_method: str = "sigmoid",
+    calibration_cv: int = 3,
     random_state: int = SEED,
 ) -> PerLabelOVRModel:
     y_arr = np.asarray(y)
     if y_arr.ndim != 2:
         raise ValueError("Expected y to be 2D for multi-label training.")
-    base_estimator = _build_base_estimator(
-        model_kind=model_kind,
-        class_weight=class_weight,
-        random_state=random_state,
-    )
 
     estimators: List[object] = []
     notes: Dict[str, str] = {}
+
+    def _weight_label(value: Any) -> str:
+        if value is None:
+            return "none"
+        if isinstance(value, str):
+            return value
+        return str(value)
+
     for idx, label in enumerate(label_names):
         target = y_arr[:, idx]
         unique = np.unique(target)
@@ -335,13 +343,43 @@ def train_per_label_ovr(
             dummy = DummyClassifier(strategy="constant", constant=constant_value)
             dummy.fit(X, target)
             estimators.append(dummy)
-            notes[label] = f"constant_{constant_value}"
+            notes[label] = f"constant_{constant_value};cw=none;calibrated=no"
             continue
 
+        label_weight = (
+            class_weight_map.get(label, class_weight)
+            if class_weight_map is not None
+            else class_weight
+        )
+        base_estimator = _build_base_estimator(
+            model_kind=model_kind,
+            class_weight=label_weight,
+            random_state=random_state,
+        )
         estimator = clone(base_estimator)
-        estimator.fit(X, target)
-        estimators.append(estimator)
-        notes[label] = "trained"
+        calibrated = False
+        fold_count = int(np.min(np.bincount(target.astype(int), minlength=2)))
+        cv_folds = max(2, min(int(calibration_cv), fold_count))
+
+        if calibrate_probs and model_kind in {"logreg", "linearsvm"} and fold_count >= 2:
+            calibrated_estimator = CalibratedClassifierCV(
+                estimator=estimator,
+                method=calibration_method,
+                cv=cv_folds,
+            )
+            calibrated_estimator.fit(X, target)
+            estimators.append(calibrated_estimator)
+            calibrated = True
+        else:
+            estimator.fit(X, target)
+            estimators.append(estimator)
+
+        notes[label] = (
+            f"trained;cw={_weight_label(label_weight)};"
+            f"calibrated={'yes' if calibrated else 'no'};"
+            f"calibration_method={calibration_method if calibrated else 'none'};"
+            f"calibration_cv={cv_folds if calibrated else 0}"
+        )
 
     return PerLabelOVRModel(
         estimators=estimators,

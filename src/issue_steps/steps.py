@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import (
     accuracy_score,
+    fbeta_score,
     f1_score,
     hamming_loss,
     precision_recall_fscore_support,
@@ -855,6 +856,172 @@ def _tune_thresholds(y_true: np.ndarray, scores: np.ndarray) -> Dict[str, float]
     return tuned
 
 
+CLASS_WEIGHT_OPTIONS: Dict[str, Optional[object]] = {
+    "none": None,
+    "balanced": "balanced",
+    "w2": {0: 2, 1: 1},
+    "w5": {0: 5, 1: 1},
+    "w10": {0: 10, 1: 1},
+}
+
+
+def _class_weight_candidates(args) -> List[Tuple[str, Optional[object]]]:
+    if bool(getattr(args, "class_weight_search", False)):
+        return list(CLASS_WEIGHT_OPTIONS.items())
+    selected = str(getattr(args, "class_weight", "balanced"))
+    if selected not in CLASS_WEIGHT_OPTIONS:
+        selected = "balanced"
+    return [(selected, CLASS_WEIGHT_OPTIONS[selected])]
+
+
+def _binary_positive_metrics(y_true: np.ndarray, scores: np.ndarray, threshold: float = 0.5) -> Dict[str, float]:
+    preds = (scores >= float(threshold)).astype(int)
+    precision, recall, f1_vals, _ = precision_recall_fscore_support(
+        y_true,
+        preds,
+        labels=[0, 1],
+        zero_division=0,
+    )
+    return {
+        "precision_1": float(precision[1]),
+        "recall_1": float(recall[1]),
+        "f1_1": float(f1_vals[1]),
+        "f2_1": float(fbeta_score(y_true, preds, beta=2, pos_label=1, zero_division=0)),
+    }
+
+
+def _select_labelwise_class_weights(
+    X_train,
+    y_train: np.ndarray,
+    X_val,
+    y_val: np.ndarray,
+    seed: int,
+    candidate_weights: List[Tuple[str, Optional[object]]],
+) -> Tuple[Dict[str, Optional[object]], Dict[str, str], pd.DataFrame]:
+    selected_value_map: Dict[str, Optional[object]] = {}
+    selected_label_map: Dict[str, str] = {}
+    rows: List[Dict[str, object]] = []
+
+    for idx, label in enumerate(ISSUE_LABELS):
+        best_key = None
+        best_label = "balanced"
+        best_value: Optional[object] = "balanced"
+        y_train_col = y_train[:, idx]
+        y_val_col = y_val[:, idx]
+
+        if np.unique(y_train_col).size < 2 or np.unique(y_val_col).size < 2:
+            selected_value_map[label] = CLASS_WEIGHT_OPTIONS["balanced"]
+            selected_label_map[label] = "balanced"
+            rows.append(
+                {
+                    "label": label,
+                    "class_weight": "balanced",
+                    "precision_1": np.nan,
+                    "recall_1": np.nan,
+                    "f1_1": np.nan,
+                    "f2_1": np.nan,
+                    "selected": 1,
+                    "note": "insufficient_label_support",
+                }
+            )
+            continue
+
+        for weight_name, weight_value in candidate_weights:
+            model = train_per_label_ovr(
+                X_train,
+                y_train_col.reshape(-1, 1),
+                [label],
+                model_kind="logreg",
+                class_weight=weight_value,
+                class_weight_map=None,
+                calibrate_probs=False,
+                random_state=seed,
+            )
+            val_scores = model.predict_scores(X_val)[:, 0]
+            metrics = _binary_positive_metrics(y_val_col, val_scores, threshold=0.5)
+            rows.append(
+                {
+                    "label": label,
+                    "class_weight": weight_name,
+                    **metrics,
+                    "selected": 0,
+                    "note": "",
+                }
+            )
+            cand_key = (
+                metrics["f2_1"],
+                metrics["recall_1"],
+                metrics["precision_1"],
+            )
+            if best_key is None or cand_key > best_key:
+                best_key = cand_key
+                best_label = weight_name
+                best_value = weight_value
+
+        selected_value_map[label] = best_value
+        selected_label_map[label] = best_label
+
+    tuning_df = pd.DataFrame(rows)
+    if not tuning_df.empty:
+        selected_keys = {(label, weight) for label, weight in selected_label_map.items()}
+        tuning_df["selected"] = tuning_df.apply(
+            lambda row: 1 if (str(row["label"]), str(row["class_weight"])) in selected_keys else 0,
+            axis=1,
+        )
+    return selected_value_map, selected_label_map, tuning_df
+
+
+def _threshold_stability_rows(
+    y_true: np.ndarray,
+    scores: np.ndarray,
+    thresholds: Dict[str, float],
+    model_variant: str,
+    split: str,
+) -> pd.DataFrame:
+    rows: List[Dict[str, object]] = []
+    deltas = [-0.10, -0.05, 0.00, 0.05, 0.10]
+    for delta in deltas:
+        adjusted = {
+            label: float(np.clip(float(thresholds[label]) + delta, 0.05, 0.95))
+            for label in ISSUE_LABELS
+        }
+        pred = _apply_thresholds(scores, adjusted)
+        metrics = _overall_metrics(y_true, pred)
+        rows.append(
+            {
+                "model_variant": model_variant,
+                "split": split,
+                "threshold_delta": float(delta),
+                "micro_f1": metrics["micro_f1"],
+                "macro_f1": metrics["macro_f1"],
+                "subset_accuracy": metrics["subset_accuracy"],
+                "hamming_loss": metrics["hamming_loss"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _write_stability_summary(path: Path, stability_df: pd.DataFrame) -> None:
+    if stability_df.empty:
+        return
+    agg = (
+        stability_df.groupby(["model_variant", "split"])[["micro_f1", "macro_f1"]]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+    lines = [
+        "# Threshold Stability Summary",
+        "",
+        "Metric stability is measured under threshold perturbations "
+        "delta in {-0.10, -0.05, 0.00, 0.05, 0.10}.",
+        "",
+        agg.to_markdown(index=False),
+        "",
+    ]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _overall_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     return {
         "micro_f1": float(f1_score(y_true, y_pred, average="micro", zero_division=0)),
@@ -1041,6 +1208,8 @@ def cmd_train(args) -> None:
     if args.enable_chi2_topk:
         best_k = None
         best_val_micro = -1.0
+        candidate_weights = _class_weight_candidates(args)
+        probe_weight_label, probe_weight_value = candidate_weights[0]
         for k in [2000, 5000, 10000]:
             sel = MultiLabelChi2Selector(k=k).fit(X_train, y_train)
             Xtr_sel = sel.transform(X_train)
@@ -1050,13 +1219,21 @@ def cmd_train(args) -> None:
                 y_train,
                 ISSUE_LABELS,
                 model_kind="logreg",
-                class_weight=args.class_weight,
+                class_weight=probe_weight_value,
+                class_weight_map=None,
+                calibrate_probs=False,
                 random_state=args.seed,
             )
             val_scores_probe = probe.predict_scores(Xva_sel)
             val_preds_probe = (val_scores_probe >= 0.5).astype(int)
             val_micro = float(f1_score(y_val, val_preds_probe, average="micro", zero_division=0))
-            chi2_val_rows.append({"k": int(sel.k_), "val_micro_f1": val_micro})
+            chi2_val_rows.append(
+                {
+                    "k": int(sel.k_),
+                    "class_weight_probe": probe_weight_label,
+                    "val_micro_f1": val_micro,
+                }
+            )
             if val_micro > best_val_micro:
                 best_val_micro = val_micro
                 best_k = k
@@ -1067,12 +1244,37 @@ def cmd_train(args) -> None:
         X_test_model = selector.transform(X_test)
         print(f"[train] selected chi2 k={selected_k} by validation micro-F1.")
 
+    selected_class_weight_map = None
+    selected_class_weight_labels = {}
+    class_weight_tuning_df = pd.DataFrame()
+    class_weight_mode = "global"
+    if bool(getattr(args, "class_weight_search", False)):
+        candidate_weights = _class_weight_candidates(args)
+        (
+            selected_class_weight_map,
+            selected_class_weight_labels,
+            class_weight_tuning_df,
+        ) = _select_labelwise_class_weights(
+            X_train_model,
+            y_train,
+            X_val_model,
+            y_val,
+            seed=args.seed,
+            candidate_weights=candidate_weights,
+        )
+        class_weight_mode = "per_label_search"
+
+    default_weight_value = CLASS_WEIGHT_OPTIONS.get(str(args.class_weight), "balanced")
     lr_model = train_per_label_ovr(
         X_train_model,
         y_train,
         ISSUE_LABELS,
         model_kind="logreg",
-        class_weight=args.class_weight,
+        class_weight=default_weight_value,
+        class_weight_map=selected_class_weight_map,
+        calibrate_probs=bool(getattr(args, "calibrate_probs", False)),
+        calibration_method=str(getattr(args, "calibration_method", "sigmoid")),
+        calibration_cv=int(getattr(args, "calibration_cv", 3)),
         random_state=args.seed,
     )
     lr_val_scores = lr_model.predict_scores(X_val_model)
@@ -1084,6 +1286,61 @@ def cmd_train(args) -> None:
 
     lr_val_pred = _apply_thresholds(lr_val_scores, thresholds_lr)
     lr_test_pred = _apply_thresholds(lr_test_scores, thresholds_lr)
+
+    stability_frames: List[pd.DataFrame] = []
+    stability_frames.append(
+        _threshold_stability_rows(
+            y_true=y_val,
+            scores=lr_val_scores,
+            thresholds=thresholds_lr,
+            model_variant="logreg_calibrated" if bool(getattr(args, "calibrate_probs", False)) else "logreg",
+            split="val",
+        )
+    )
+    stability_frames.append(
+        _threshold_stability_rows(
+            y_true=y_test,
+            scores=lr_test_scores,
+            thresholds=thresholds_lr,
+            model_variant="logreg_calibrated" if bool(getattr(args, "calibrate_probs", False)) else "logreg",
+            split="test",
+        )
+    )
+
+    if bool(getattr(args, "calibrate_probs", False)):
+        uncal_model = train_per_label_ovr(
+            X_train_model,
+            y_train,
+            ISSUE_LABELS,
+            model_kind="logreg",
+            class_weight=default_weight_value,
+            class_weight_map=selected_class_weight_map,
+            calibrate_probs=False,
+            random_state=args.seed,
+        )
+        uncal_val_scores = uncal_model.predict_scores(X_val_model)
+        uncal_test_scores = uncal_model.predict_scores(X_test_model)
+        uncal_thresholds = {label: 0.5 for label in ISSUE_LABELS}
+        if args.tune_thresholds:
+            uncal_thresholds = _tune_thresholds(y_val, uncal_val_scores)
+        stability_frames.append(
+            _threshold_stability_rows(
+                y_true=y_val,
+                scores=uncal_val_scores,
+                thresholds=uncal_thresholds,
+                model_variant="logreg_uncalibrated",
+                split="val",
+            )
+        )
+        stability_frames.append(
+            _threshold_stability_rows(
+                y_true=y_test,
+                scores=uncal_test_scores,
+                thresholds=uncal_thresholds,
+                model_variant="logreg_uncalibrated",
+                split="test",
+            )
+        )
 
     overall_rows = []
     per_label_frames = []
@@ -1102,7 +1359,9 @@ def cmd_train(args) -> None:
             y_train,
             ISSUE_LABELS,
             model_kind="linearsvm",
-            class_weight=args.class_weight,
+            class_weight=default_weight_value,
+            class_weight_map=selected_class_weight_map,
+            calibrate_probs=False,
             random_state=args.seed,
         )
         svm_val_scores = svm_model.predict_scores(X_val_model)
@@ -1129,6 +1388,14 @@ def cmd_train(args) -> None:
     per_label_df = pd.concat(per_label_frames, ignore_index=True)
     overall_df.to_csv(out_dir / "02_metrics_overall.csv", index=False)
     per_label_df.to_csv(out_dir / "02_metrics_per_label.csv", index=False)
+
+    if not class_weight_tuning_df.empty:
+        class_weight_tuning_df.to_csv(out_dir / "02_class_weight_tuning.csv", index=False)
+
+    stability_df = pd.concat(stability_frames, ignore_index=True) if stability_frames else pd.DataFrame()
+    if not stability_df.empty:
+        stability_df.to_csv(out_dir / "02_threshold_stability.csv", index=False)
+        _write_stability_summary(out_dir / "02_threshold_stability_summary.md", stability_df)
 
     confusion_md = _build_confusion_like_summary(test_df, y_test, lr_test_pred, lr_test_scores)
     (out_dir / "02_confusion_like_summary.md").write_text(confusion_md, encoding="utf-8")
@@ -1180,6 +1447,11 @@ def cmd_train(args) -> None:
         "chi2_val_micro_f1": chi2_val_rows,
         "min_df_fallback_to_1": bool(min_df_fallback),
         "class_weight": args.class_weight,
+        "class_weight_mode": class_weight_mode,
+        "class_weight_per_label": selected_class_weight_labels,
+        "calibrate_probs": bool(getattr(args, "calibrate_probs", False)),
+        "calibration_method": str(getattr(args, "calibration_method", "sigmoid")),
+        "calibration_cv": int(getattr(args, "calibration_cv", 3)),
         "tune_thresholds": bool(args.tune_thresholds),
         "include_svm_baseline": bool(args.include_svm_baseline),
         "label_list": ISSUE_LABELS,

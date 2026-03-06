@@ -34,6 +34,11 @@ Tasks:
 - probability calibration for threshold stability.
 - commandized ablation study (negation/char/lexicon toggles).
 
+Current implementation status:
+- issue training now supports per-label class-weight search and probability calibration (`src.issue_steps train` with `--class_weight_search --calibrate_probs`).
+- threshold stability artifacts are exported (`02_threshold_stability.csv`, `02_threshold_stability_summary.md`).
+- ablation is commandized via `python -m src.nlp_ext classic_ablation` with outputs `nlp_ablation.csv` and `nlp_ablation_summary.md`.
+
 ## level 4 - deep model improvements
 
 Goal: extend contextual modeling while preserving demo runtime.

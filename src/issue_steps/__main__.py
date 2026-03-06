@@ -209,6 +209,29 @@ def main() -> None:
         help="Per-label class weighting strategy",
     )
     train.add_argument(
+        "--class_weight_search",
+        action="store_true",
+        help="Tune class weight per label on validation split",
+    )
+    train.add_argument(
+        "--calibrate_probs",
+        action="store_true",
+        help="Enable probability calibration for OVR logistic model",
+    )
+    train.add_argument(
+        "--calibration_method",
+        type=str,
+        choices=["sigmoid", "isotonic"],
+        default="sigmoid",
+        help="Calibration method for probability calibration",
+    )
+    train.add_argument(
+        "--calibration_cv",
+        type=int,
+        default=3,
+        help="Maximum cross-validation folds for calibration",
+    )
+    train.add_argument(
         "--seed",
         type=int,
         default=SEED,

@@ -20,6 +20,7 @@ from src.dm2_steps.steps import _load_trained_artifacts, _train_best_lr
 from src.text_features import DEFAULT_NEGATION_WINDOW
 from src.run_metadata import begin_run, end_run
 from .syllabus_upgrades import (
+    run_classic_ablation,
     build_course_fit_matrix,
     run_llm_prompt_baseline,
     run_mlm_probe,
@@ -424,6 +425,25 @@ def main():
     bench_parser.add_argument("--threshold_low", type=float, default=DEFAULT_THRESHOLDS[0])
     bench_parser.add_argument("--threshold_high", type=float, default=DEFAULT_THRESHOLDS[1])
 
+    ablation_parser = subparsers.add_parser(
+        "classic_ablation",
+        help="Run classic feature ablation (negation/char/lexicon toggles).",
+    )
+    ablation_parser.add_argument("--data_path", type=Path, default=Path("data/Gift_Cards.jsonl"))
+    ablation_parser.add_argument("--output_dir", type=Path, default=Path("results/nlp_ext/syllabus_upgrade"))
+    ablation_parser.add_argument("--max_train_samples", type=int, default=35000)
+    ablation_parser.add_argument(
+        "--enable_abbrev_norm", action="store_true", help="Apply abbreviation normalization"
+    )
+    ablation_parser.add_argument(
+        "--enable_negation_tagging", action="store_true", help="Enable negation tagging in cleaning"
+    )
+    ablation_parser.add_argument(
+        "--negation_window", type=int, default=DEFAULT_NEGATION_WINDOW
+    )
+    ablation_parser.add_argument("--threshold_low", type=float, default=DEFAULT_THRESHOLDS[0])
+    ablation_parser.add_argument("--threshold_high", type=float, default=DEFAULT_THRESHOLDS[1])
+
     ngram_parser = subparsers.add_parser(
         "ngram_language_model",
         help="Train unigram/bigram language models and report perplexity.",
@@ -528,6 +548,7 @@ def main():
     full_parser.add_argument("--lstm_batch_size", type=int, default=128)
     full_parser.add_argument("--lstm_epochs", type=int, default=2)
     full_parser.add_argument("--lstm_lr", type=float, default=1e-3)
+    full_parser.add_argument("--include_classic_ablation", action="store_true")
     full_parser.add_argument("--include_mlm_probe", action="store_true")
     full_parser.add_argument("--include_llm_prompt", action="store_true")
     full_parser.add_argument("--mlm_model_name", type=str, default="distilroberta-base")
@@ -561,6 +582,8 @@ def main():
             transformer_finetune(args)
         elif args.command == "classic_syllabus_bench":
             run_classic_syllabus_bench(args)
+        elif args.command == "classic_ablation":
+            run_classic_ablation(args)
         elif args.command == "ngram_language_model":
             run_ngram_language_model(args)
         elif args.command == "mlm_probe":
@@ -573,6 +596,8 @@ def main():
             build_course_fit_matrix(args)
         elif args.command == "full_syllabus_upgrade":
             run_classic_syllabus_bench(args)
+            if args.include_classic_ablation:
+                run_classic_ablation(args)
             run_ngram_language_model(args)
             run_rnn_lstm_baseline(args)
             if args.include_mlm_probe:
