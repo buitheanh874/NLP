@@ -57,6 +57,17 @@ Tasks:
 - significance testing between main models and baselines.
 - structured error taxonomy reports.
 
+Current implementation status:
+- command added: `python -m src.nlp_ext eval_rigor`.
+- outputs:
+  - `nlp_eval_metrics.csv`
+  - `nlp_eval_ci_bootstrap.csv`
+  - `nlp_eval_significance.csv`
+  - `nlp_eval_error_taxonomy.csv`
+  - `nlp_eval_error_details.csv`
+  - `nlp_eval_error_taxonomy.md`
+  - `nlp_eval_summary.md`
+
 ## level 6 - demo and productization
 
 Goal: deliver a robust defense/demo experience.

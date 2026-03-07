@@ -73,7 +73,10 @@ python -m src.nlp_ext llm_prompt_baseline --data_path data/Gift_Cards.jsonl --ou
 # 10) Classic ablation study (negation/char/lexicon toggles)
 python -m src.nlp_ext classic_ablation --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --threshold_low 0.40 --threshold_high 0.60
 
-# 11) Unified cross-task scoreboard
+# 11) Level-5 evaluation rigor package (bootstrap CI, significance test, error taxonomy)
+python -m src.nlp_ext eval_rigor --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --bootstrap_iters 1000
+
+# 12) Unified cross-task scoreboard
 python scripts/build_scoreboard.py
 ```
 

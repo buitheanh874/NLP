@@ -1,3 +1,4 @@
+import json
 import math
 import random
 import re
@@ -5,11 +6,14 @@ import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
+import joblib
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from scipy.sparse import vstack
+from scipy.stats import chi2 as chi2_dist
 from sklearn.decomposition import TruncatedSVD
 from sklearn.linear_model import LogisticRegression, Perceptron, SGDClassifier
 from sklearn.metrics import (
@@ -533,6 +537,440 @@ def run_classic_ablation(args) -> None:
     ]
     (out_dir / "nlp_ablation_summary.md").write_text("\n".join(summary_lines), encoding="utf-8")
     print(f"[NLP EXT] Classic ablation outputs saved to {out_dir}")
+
+
+PRIMARY_METRICS = ["accuracy", "precision_0", "recall_0", "f1_0", "f2_0", "f1"]
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    clipped = np.clip(x, -20.0, 20.0)
+    return 1.0 / (1.0 + np.exp(-clipped))
+
+
+def _predict_binary_with_scores(model, X) -> Tuple[np.ndarray, np.ndarray]:
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(X)[:, 1]
+        preds = (probs >= 0.5).astype(int)
+        return probs.astype(float), preds.astype(int)
+    if hasattr(model, "decision_function"):
+        scores = np.asarray(model.decision_function(X)).ravel()
+        probs = _sigmoid(scores)
+        preds = (scores >= 0.0).astype(int)
+        return probs.astype(float), preds.astype(int)
+    preds = np.asarray(model.predict(X)).astype(int).ravel()
+    probs = preds.astype(float)
+    return probs, preds
+
+
+def _stable_seed_offset(key: str) -> int:
+    return int(sum((idx + 1) * ord(ch) for idx, ch in enumerate(key)) % 10000)
+
+
+def _load_eval_bundle(args):
+    model_meta = {}
+    meta_path = Path("models/variant_meta.json")
+    if meta_path.exists():
+        try:
+            model_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            model_meta = {}
+
+    enable_abbrev = bool(model_meta.get("enable_abbrev_norm", args.enable_abbrev_norm))
+    enable_neg = bool(model_meta.get("negation", args.enable_negation_tagging))
+    neg_window = int(model_meta.get("negation_window", args.negation_window))
+    variant_name = str(model_meta.get("variant", args.variant))
+
+    df = load_data(args.data_path)
+    splits = make_splits(
+        df,
+        enable_abbrev_norm=enable_abbrev,
+        enable_negation=enable_neg,
+        negation_window=neg_window,
+    )
+    y_train = splits.train["label"].values
+    y_val = splits.val["label"].values
+    y_test = splits.test["label"].values
+
+    vec_path = Path("models/tfidf_vectorizer.joblib")
+    sel_path = Path("models/chi2_selector.joblib")
+    model_path = Path("models/best_lr_model.joblib")
+    has_saved_artifacts = vec_path.exists() and sel_path.exists() and model_path.exists()
+
+    if has_saved_artifacts:
+        vectorizer = joblib.load(vec_path)
+        selector = joblib.load(sel_path)
+        classic_model = joblib.load(model_path)
+
+        X_train = selector.transform(vectorizer.transform(splits.train["text"].tolist()))
+        X_val = selector.transform(vectorizer.transform(splits.val["text"].tolist()))
+        X_test = selector.transform(vectorizer.transform(splits.test["text"].tolist()))
+        source = "saved_classic_artifacts"
+    else:
+        spec = _pick_variant(variant_name)
+        vec_bundle = fit_vectorizer(
+            splits,
+            variant=spec,
+            enable_abbrev_norm=enable_abbrev,
+            negation_window=neg_window,
+        )
+        X_train = vec_bundle.X_train
+        X_val = vec_bundle.X_val
+        X_test = vec_bundle.X_test
+        classic_model = LogisticRegression(
+            penalty="l2",
+            solver="liblinear",
+            max_iter=800,
+            class_weight="balanced",
+            random_state=SEED,
+        )
+        X_trainval = vstack([X_train, X_val])
+        y_trainval = np.concatenate([y_train, y_val])
+        classic_model.fit(X_trainval, y_trainval)
+        source = f"trained_fallback_{variant_name}"
+
+    return {
+        "splits": splits,
+        "X_train": X_train,
+        "X_val": X_val,
+        "X_test": X_test,
+        "y_train": y_train,
+        "y_val": y_val,
+        "y_test": y_test,
+        "classic_model": classic_model,
+        "source": source,
+    }
+
+
+def _bootstrap_metric_ci(y_true: np.ndarray, y_pred: np.ndarray, metric_name: str, iters: int, seed: int) -> Dict[str, float]:
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    values = []
+    for _ in range(max(1, int(iters))):
+        idx = rng.integers(0, n, size=n)
+        sampled = _metrics_from_labels(y_true[idx], y_pred[idx])
+        values.append(float(sampled[metric_name]))
+    arr = np.array(values, dtype=float)
+    point = float(_metrics_from_labels(y_true, y_pred)[metric_name])
+    return {
+        "point_estimate": point,
+        "ci_low": float(np.quantile(arr, 0.025)),
+        "ci_high": float(np.quantile(arr, 0.975)),
+    }
+
+
+def _bootstrap_diff_ci(
+    y_true: np.ndarray,
+    y_pred_a: np.ndarray,
+    y_pred_b: np.ndarray,
+    metric_name: str,
+    iters: int,
+    seed: int,
+) -> Dict[str, float]:
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    diffs = []
+    for _ in range(max(1, int(iters))):
+        idx = rng.integers(0, n, size=n)
+        m_a = _metrics_from_labels(y_true[idx], y_pred_a[idx])[metric_name]
+        m_b = _metrics_from_labels(y_true[idx], y_pred_b[idx])[metric_name]
+        diffs.append(float(m_a - m_b))
+    arr = np.array(diffs, dtype=float)
+    point = float(_metrics_from_labels(y_true, y_pred_a)[metric_name] - _metrics_from_labels(y_true, y_pred_b)[metric_name])
+    return {
+        "point_diff": point,
+        "ci_low": float(np.quantile(arr, 0.025)),
+        "ci_high": float(np.quantile(arr, 0.975)),
+    }
+
+
+def _mcnemar_significance(y_true: np.ndarray, y_pred_a: np.ndarray, y_pred_b: np.ndarray) -> Dict[str, float]:
+    a_correct = y_pred_a == y_true
+    b_correct = y_pred_b == y_true
+    n01 = int(np.logical_and(a_correct, ~b_correct).sum())
+    n10 = int(np.logical_and(~a_correct, b_correct).sum())
+    denom = n01 + n10
+    if denom == 0:
+        chi2_stat = 0.0
+        p_value = 1.0
+    else:
+        chi2_stat = (abs(n01 - n10) - 1.0) ** 2 / float(denom)
+        p_value = float(chi2_dist.sf(chi2_stat, df=1))
+    return {
+        "n01": n01,
+        "n10": n10,
+        "chi2_cc": float(chi2_stat),
+        "p_value": p_value,
+    }
+
+
+def _taxonomy_category(text: str) -> str:
+    raw = str(text)
+    lower = f" {raw.lower()} "
+    token_count = len(raw.split())
+    punctuation_count = sum(ch in "!?.,;:" for ch in raw)
+    alpha_count = sum(ch.isalpha() for ch in raw)
+
+    if token_count < 3:
+        return "short_text"
+    if any(tok in lower for tok in [" gr8 ", " thx ", " idk ", " imo ", " w/ ", " w/o "]):
+        return "slang_or_abbrev"
+    if any(tok in lower for tok in [" not ", " no ", " never ", " cannot ", " can't ", " dont ", " didn't ", " didnt "]):
+        return "negation_pattern"
+    if any(tok in lower for tok in [" but ", " however ", " although ", " though ", " yet "]):
+        return "contrast_pattern"
+    if any(tok in lower for tok in [" redeem", " code", " refund", " return", " delivery", " shipping", " support", " scam", " fraud"]):
+        return "domain_issue_term"
+    if punctuation_count >= max(3, int(alpha_count * 0.3)):
+        return "punctuation_heavy"
+    return "other"
+
+
+def _write_error_taxonomy(
+    out_dir: Path,
+    texts: List[str],
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    probs: np.ndarray,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    detail_rows: List[Dict[str, object]] = []
+    for idx, (text, true_label, pred_label, prob) in enumerate(zip(texts, y_true, y_pred, probs)):
+        error_type = None
+        if int(true_label) == 0 and int(pred_label) == 1:
+            error_type = "false_negative_0"
+        elif int(true_label) == 1 and int(pred_label) == 0:
+            error_type = "false_positive_0"
+        if error_type is None:
+            continue
+        detail_rows.append(
+            {
+                "row_id": idx,
+                "error_type": error_type,
+                "category": _taxonomy_category(text),
+                "true_label": int(true_label),
+                "pred_label": int(pred_label),
+                "prob_positive": float(prob),
+                "text": str(text),
+            }
+        )
+
+    details_df = pd.DataFrame(detail_rows)
+    details_csv = out_dir / "nlp_eval_error_details.csv"
+    details_df.to_csv(details_csv, index=False, encoding="utf-8")
+
+    if details_df.empty:
+        summary_df = pd.DataFrame(columns=["error_type", "category", "count", "share"])
+        summary_csv = out_dir / "nlp_eval_error_taxonomy.csv"
+        summary_df.to_csv(summary_csv, index=False, encoding="utf-8")
+        md_path = out_dir / "nlp_eval_error_taxonomy.md"
+        md_path.write_text("# Error Taxonomy Report\n\nNo misclassified test rows found.\n", encoding="utf-8")
+        return summary_df, details_df
+
+    grouped = (
+        details_df.groupby(["error_type", "category"], as_index=False)
+        .size()
+        .rename(columns={"size": "count"})
+        .sort_values(["error_type", "count", "category"], ascending=[True, False, True], kind="mergesort")
+    )
+    grouped["share"] = grouped.groupby("error_type")["count"].transform(lambda x: x / x.sum())
+    summary_df = grouped.rename(columns={"category": "taxonomy_category"})
+    summary_csv = out_dir / "nlp_eval_error_taxonomy.csv"
+    summary_df.to_csv(summary_csv, index=False, encoding="utf-8")
+
+    lines = [
+        "# Error Taxonomy Report",
+        "",
+        f"- total_misclassified_rows: {len(details_df)}",
+        f"- false_negative_0: {int((details_df['error_type'] == 'false_negative_0').sum())}",
+        f"- false_positive_0: {int((details_df['error_type'] == 'false_positive_0').sum())}",
+        "",
+        "## Taxonomy Counts",
+        "",
+        summary_df.to_markdown(index=False),
+        "",
+    ]
+    for error_type in ["false_negative_0", "false_positive_0"]:
+        subset = details_df[details_df["error_type"] == error_type]
+        if subset.empty:
+            continue
+        lines.append(f"## Examples: {error_type}")
+        top_categories = (
+            subset["category"].value_counts().head(3).index.tolist()
+        )
+        for category in top_categories:
+            cat_rows = subset[subset["category"] == category].head(2)
+            lines.append(f"- {category}:")
+            for _, row in cat_rows.iterrows():
+                snippet = str(row["text"]).replace("\n", " ").strip()
+                if len(snippet) > 160:
+                    snippet = snippet[:157] + "..."
+                lines.append(
+                    f"  row={int(row['row_id'])}, p_pos={row['prob_positive']:.3f}, text=\"{snippet}\""
+                )
+        lines.append("")
+
+    md_path = out_dir / "nlp_eval_error_taxonomy.md"
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+    return summary_df, details_df
+
+
+def run_eval_rigor(args) -> None:
+    np.random.seed(SEED)
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    bundle = _load_eval_bundle(args)
+    splits = bundle["splits"]
+    X_train = bundle["X_train"]
+    X_val = bundle["X_val"]
+    X_test = bundle["X_test"]
+    y_train = bundle["y_train"]
+    y_val = bundle["y_val"]
+    y_test = bundle["y_test"]
+    classic_model = bundle["classic_model"]
+
+    classic_probs, classic_pred = _predict_binary_with_scores(classic_model, X_test)
+    classic_metrics = _metrics_from_labels(y_test, classic_pred)
+
+    X_trainval = vstack([X_train, X_val])
+    y_trainval = np.concatenate([y_train, y_val])
+    X_fit, y_fit = _subsample_train(X_trainval, y_trainval, int(args.max_train_samples), seed=SEED)
+
+    baseline_models = {
+        "multinomial_nb": MultinomialNB(alpha=0.3),
+        "linear_svm": LinearSVC(class_weight="balanced", random_state=SEED, max_iter=4000),
+    }
+    predictions = {
+        "classic_main": {
+            "probs": classic_probs,
+            "pred": classic_pred,
+            "metrics": classic_metrics,
+        }
+    }
+
+    for name, model in baseline_models.items():
+        model.fit(X_fit, y_fit)
+        probs, pred = _predict_binary_with_scores(model, X_test)
+        predictions[name] = {
+            "probs": probs,
+            "pred": pred,
+            "metrics": _metrics_from_labels(y_test, pred),
+        }
+
+    metrics_rows = []
+    for model_name, payload in predictions.items():
+        row = {"model": model_name}
+        row.update(payload["metrics"])
+        metrics_rows.append(row)
+    metrics_df = pd.DataFrame(metrics_rows)
+    metrics_df.to_csv(out_dir / "nlp_eval_metrics.csv", index=False, encoding="utf-8")
+
+    ci_rows = []
+    for model_name, payload in predictions.items():
+        for metric_name in PRIMARY_METRICS:
+            key = f"{model_name}:{metric_name}"
+            ci = _bootstrap_metric_ci(
+                y_true=y_test,
+                y_pred=payload["pred"],
+                metric_name=metric_name,
+                iters=int(args.bootstrap_iters),
+                seed=SEED + _stable_seed_offset(key),
+            )
+            ci_rows.append(
+                {
+                    "model": model_name,
+                    "metric": metric_name,
+                    "point_estimate": ci["point_estimate"],
+                    "ci_low_95": ci["ci_low"],
+                    "ci_high_95": ci["ci_high"],
+                    "bootstrap_iters": int(args.bootstrap_iters),
+                }
+            )
+    ci_df = pd.DataFrame(ci_rows)
+    ci_df.to_csv(out_dir / "nlp_eval_ci_bootstrap.csv", index=False, encoding="utf-8")
+
+    significance_rows = []
+    for baseline_name in ["multinomial_nb", "linear_svm"]:
+        sig = _mcnemar_significance(
+            y_true=y_test,
+            y_pred_a=predictions["classic_main"]["pred"],
+            y_pred_b=predictions[baseline_name]["pred"],
+        )
+        diff_recall = _bootstrap_diff_ci(
+            y_true=y_test,
+            y_pred_a=predictions["classic_main"]["pred"],
+            y_pred_b=predictions[baseline_name]["pred"],
+            metric_name="recall_0",
+            iters=int(args.bootstrap_iters),
+            seed=SEED + _stable_seed_offset(f"{baseline_name}:recall_0"),
+        )
+        diff_f2 = _bootstrap_diff_ci(
+            y_true=y_test,
+            y_pred_a=predictions["classic_main"]["pred"],
+            y_pred_b=predictions[baseline_name]["pred"],
+            metric_name="f2_0",
+            iters=int(args.bootstrap_iters),
+            seed=SEED + _stable_seed_offset(f"{baseline_name}:f2_0"),
+        )
+        significance_rows.append(
+            {
+                "model_a": "classic_main",
+                "model_b": baseline_name,
+                "metric_a_recall_0": predictions["classic_main"]["metrics"]["recall_0"],
+                "metric_b_recall_0": predictions[baseline_name]["metrics"]["recall_0"],
+                "metric_a_f2_0": predictions["classic_main"]["metrics"]["f2_0"],
+                "metric_b_f2_0": predictions[baseline_name]["metrics"]["f2_0"],
+                "diff_recall_0": diff_recall["point_diff"],
+                "diff_recall_0_ci_low_95": diff_recall["ci_low"],
+                "diff_recall_0_ci_high_95": diff_recall["ci_high"],
+                "diff_f2_0": diff_f2["point_diff"],
+                "diff_f2_0_ci_low_95": diff_f2["ci_low"],
+                "diff_f2_0_ci_high_95": diff_f2["ci_high"],
+                "n01": sig["n01"],
+                "n10": sig["n10"],
+                "chi2_cc": sig["chi2_cc"],
+                "p_value": sig["p_value"],
+                "significant_0_05": int(sig["p_value"] < 0.05),
+                "bootstrap_iters": int(args.bootstrap_iters),
+            }
+        )
+    significance_df = pd.DataFrame(significance_rows)
+    significance_df.to_csv(out_dir / "nlp_eval_significance.csv", index=False, encoding="utf-8")
+
+    taxonomy_df, details_df = _write_error_taxonomy(
+        out_dir=out_dir,
+        texts=splits.test["text"].tolist(),
+        y_true=y_test,
+        y_pred=predictions["classic_main"]["pred"],
+        probs=predictions["classic_main"]["probs"],
+    )
+
+    summary_lines = [
+        "# Evaluation Rigor Summary",
+        "",
+        f"- source_classic_model: {bundle['source']}",
+        f"- bootstrap_iters: {int(args.bootstrap_iters)}",
+        f"- test_size: {len(y_test)}",
+        "",
+        "## Main model metrics (classic_main)",
+        "",
+        f"- recall_0: {predictions['classic_main']['metrics']['recall_0']:.3f}",
+        f"- precision_0: {predictions['classic_main']['metrics']['precision_0']:.3f}",
+        f"- f2_0: {predictions['classic_main']['metrics']['f2_0']:.3f}",
+        "",
+        "## Files",
+        "",
+        "- nlp_eval_metrics.csv",
+        "- nlp_eval_ci_bootstrap.csv",
+        "- nlp_eval_significance.csv",
+        "- nlp_eval_error_taxonomy.csv",
+        "- nlp_eval_error_details.csv",
+        "- nlp_eval_error_taxonomy.md",
+        "",
+        f"- taxonomy_rows: {len(taxonomy_df)}",
+        f"- error_detail_rows: {len(details_df)}",
+    ]
+    (out_dir / "nlp_eval_summary.md").write_text("\n".join(summary_lines), encoding="utf-8")
+    print(f"[NLP EXT] Evaluation rigor outputs saved to {out_dir}")
 
 
 def run_rnn_lstm_baseline(args) -> None:

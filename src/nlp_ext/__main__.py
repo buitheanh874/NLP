@@ -22,6 +22,7 @@ from src.run_metadata import begin_run, end_run
 from .syllabus_upgrades import (
     run_classic_ablation,
     build_course_fit_matrix,
+    run_eval_rigor,
     run_llm_prompt_baseline,
     run_mlm_probe,
     run_rnn_lstm_baseline,
@@ -444,6 +445,25 @@ def main():
     ablation_parser.add_argument("--threshold_low", type=float, default=DEFAULT_THRESHOLDS[0])
     ablation_parser.add_argument("--threshold_high", type=float, default=DEFAULT_THRESHOLDS[1])
 
+    eval_parser = subparsers.add_parser(
+        "eval_rigor",
+        help="Run evaluation rigor package (bootstrap CI, significance test, error taxonomy).",
+    )
+    eval_parser.add_argument("--data_path", type=Path, default=Path("data/Gift_Cards.jsonl"))
+    eval_parser.add_argument("--output_dir", type=Path, default=Path("results/nlp_ext/syllabus_upgrade"))
+    eval_parser.add_argument("--variant", type=str, default="V6")
+    eval_parser.add_argument("--max_train_samples", type=int, default=35000)
+    eval_parser.add_argument("--bootstrap_iters", type=int, default=1000)
+    eval_parser.add_argument(
+        "--enable_abbrev_norm", action="store_true", help="Apply abbreviation normalization"
+    )
+    eval_parser.add_argument(
+        "--enable_negation_tagging", action="store_true", help="Enable negation tagging in cleaning"
+    )
+    eval_parser.add_argument(
+        "--negation_window", type=int, default=DEFAULT_NEGATION_WINDOW
+    )
+
     ngram_parser = subparsers.add_parser(
         "ngram_language_model",
         help="Train unigram/bigram language models and report perplexity.",
@@ -584,6 +604,8 @@ def main():
             run_classic_syllabus_bench(args)
         elif args.command == "classic_ablation":
             run_classic_ablation(args)
+        elif args.command == "eval_rigor":
+            run_eval_rigor(args)
         elif args.command == "ngram_language_model":
             run_ngram_language_model(args)
         elif args.command == "mlm_probe":
