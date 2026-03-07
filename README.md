@@ -55,28 +55,31 @@ python -m src.nlp_ext transformer_finetune --data_path data/Gift_Cards.jsonl
 # 5) Transformer fast-mode for CPU (recommended on non-GPU machines)
 python -m src.nlp_ext transformer_finetune --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext_fast --fast_mode --skip_hard_cases --skip_model_save
 
-# 6) Syllabus upgrade benchmark package (optional)
+# 6) Level-4 issue transformer (multi-label + optional hybrid routing)
+python -m src.nlp_ext issue_transformer_multilabel --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/issue_transformer --fast_mode --skip_model_save --hybrid_max_route_rate 0.25
+
+# 7) Syllabus upgrade benchmark package (optional)
 python -m src.nlp_ext full_syllabus_upgrade --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade
 
-# 6b) Full package including MLM + LLM-prompt artifacts
+# 7b) Full package including MLM + LLM-prompt artifacts
 python -m src.nlp_ext full_syllabus_upgrade --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --include_mlm_probe --include_llm_prompt
 
-# 7) RNN/LSTM baseline (optional)
+# 8) RNN/LSTM baseline (optional)
 python -m src.nlp_ext rnn_lstm_baseline --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --lstm_epochs 2
 
-# 8) MLM probe (masked language model topic)
+# 9) MLM probe (masked language model topic)
 python -m src.nlp_ext mlm_probe --output_dir results/nlp_ext/syllabus_upgrade
 
-# 9) LLM application proxy (prompt-style semantic baseline)
+# 10) LLM application proxy (prompt-style semantic baseline)
 python -m src.nlp_ext llm_prompt_baseline --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade
 
-# 10) Classic ablation study (negation/char/lexicon toggles)
+# 11) Classic ablation study (negation/char/lexicon toggles)
 python -m src.nlp_ext classic_ablation --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --threshold_low 0.40 --threshold_high 0.60
 
-# 11) Level-5 evaluation rigor package (bootstrap CI, significance test, error taxonomy)
+# 12) Level-5 evaluation rigor package (bootstrap CI, significance test, error taxonomy)
 python -m src.nlp_ext eval_rigor --data_path data/Gift_Cards.jsonl --output_dir results/nlp_ext/syllabus_upgrade --bootstrap_iters 1000
 
-# 12) Unified cross-task scoreboard
+# 13) Unified cross-task scoreboard
 python scripts/build_scoreboard.py
 ```
 

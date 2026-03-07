@@ -48,6 +48,16 @@ Tasks:
 - hybrid routing (classic for recall, transformer for uncertain refinement).
 - optional model compression for CPU-friendly inference.
 
+Current implementation status:
+- command added: `python -m src.nlp_ext issue_transformer_multilabel`.
+- outputs:
+  - `nlp_issue_transformer_metrics_overall.csv`
+  - `nlp_issue_transformer_metrics_per_label.csv`
+  - `nlp_issue_transformer_thresholds.csv`
+  - `nlp_issue_transformer_summary.md`
+  - optional hybrid artifacts: `nlp_issue_hybrid_metrics.csv`, `nlp_issue_hybrid_routing.csv`
+  - optional quantized weights: `nlp_issue_transformer_quantized_state.pt`
+
 ## level 5 - evaluation rigor
 
 Goal: strengthen scientific validity of reported gains.

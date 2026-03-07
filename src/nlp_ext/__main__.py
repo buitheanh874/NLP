@@ -23,6 +23,7 @@ from .syllabus_upgrades import (
     run_classic_ablation,
     build_course_fit_matrix,
     run_eval_rigor,
+    run_issue_transformer_multilabel,
     run_llm_prompt_baseline,
     run_mlm_probe,
     run_rnn_lstm_baseline,
@@ -537,6 +538,38 @@ def main():
     rnn_parser.add_argument("--threshold_low", type=float, default=DEFAULT_THRESHOLDS[0])
     rnn_parser.add_argument("--threshold_high", type=float, default=DEFAULT_THRESHOLDS[1])
 
+    issue_tf_parser = subparsers.add_parser(
+        "issue_transformer_multilabel",
+        help="Train/evaluate transformer multi-label baseline for issue extraction with optional hybrid routing.",
+    )
+    issue_tf_parser.add_argument("--labels_path", type=Path, default=Path("data/issue_labels.csv"))
+    issue_tf_parser.add_argument("--data_path", type=Path, default=Path("data/Gift_Cards.jsonl"))
+    issue_tf_parser.add_argument(
+        "--output_dir", type=Path, default=Path("results/nlp_ext/issue_transformer")
+    )
+    issue_tf_parser.add_argument(
+        "--model_save_dir", type=Path, default=Path("models/issue_transformer_multilabel")
+    )
+    issue_tf_parser.add_argument("--model_dir", type=Path, default=Path("models/issue_classifier"))
+    issue_tf_parser.add_argument("--model_name", type=str, default="distilbert-base-uncased")
+    issue_tf_parser.add_argument("--epochs", type=float, default=1.0)
+    issue_tf_parser.add_argument("--batch_size", type=int, default=16)
+    issue_tf_parser.add_argument("--max_length", type=int, default=192)
+    issue_tf_parser.add_argument("--max_total_samples", type=int, default=20000)
+    issue_tf_parser.add_argument("--max_train_samples", type=int, default=8000)
+    issue_tf_parser.add_argument("--lr", type=float, default=2e-5)
+    issue_tf_parser.add_argument("--seed", type=int, default=42)
+    issue_tf_parser.add_argument("--hybrid_margin", type=float, default=0.08)
+    issue_tf_parser.add_argument("--hybrid_max_route_rate", type=float, default=0.25)
+    issue_tf_parser.add_argument("--tune_thresholds", action="store_true")
+    issue_tf_parser.add_argument("--skip_model_save", action="store_true")
+    issue_tf_parser.add_argument("--export_quantized", action="store_true")
+    issue_tf_parser.add_argument("--fast_mode", action="store_true")
+    issue_tf_parser.add_argument("--fast_max_total_samples", type=int, default=8000)
+    issue_tf_parser.add_argument("--fast_max_train_samples", type=int, default=1500)
+    issue_tf_parser.add_argument("--fast_max_length", type=int, default=96)
+    issue_tf_parser.add_argument("--fast_epochs", type=float, default=0.2)
+
     fit_parser = subparsers.add_parser(
         "course_fit_matrix",
         help="Build a syllabus topic-coverage matrix from project artifacts.",
@@ -614,6 +647,8 @@ def main():
             run_llm_prompt_baseline(args)
         elif args.command == "rnn_lstm_baseline":
             run_rnn_lstm_baseline(args)
+        elif args.command == "issue_transformer_multilabel":
+            run_issue_transformer_multilabel(args)
         elif args.command == "course_fit_matrix":
             build_course_fit_matrix(args)
         elif args.command == "full_syllabus_upgrade":

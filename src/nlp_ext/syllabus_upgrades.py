@@ -20,8 +20,10 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     fbeta_score,
+    hamming_loss,
     precision_recall_fscore_support,
 )
+from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import ComplementNB, MultinomialNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import LinearSVC
@@ -32,6 +34,12 @@ from src.dm2_steps.common import (
     load_data,
     make_splits,
     selective_metrics,
+)
+from src.issue_steps.common import (
+    ISSUE_LABELS,
+    clean_with_stage1,
+    load_issue_bundle,
+    load_stage1_cleaning_config,
 )
 from src.text_features import CONTEXT_VARIANTS
 
@@ -973,6 +981,542 @@ def run_eval_rigor(args) -> None:
     print(f"[NLP EXT] Evaluation rigor outputs saved to {out_dir}")
 
 
+def _prepare_issue_multilabel_dataframe(
+    labels_path: Path,
+    data_path: Path,
+    seed: int,
+    max_samples: int,
+) -> Tuple[pd.DataFrame, np.ndarray, Dict[str, object]]:
+    if not labels_path.exists():
+        raise FileNotFoundError(f"labels_path not found: {labels_path}")
+
+    labels_df = pd.read_csv(labels_path)
+    if "id" not in labels_df.columns:
+        labels_df = labels_df.copy()
+        labels_df.insert(0, "id", np.arange(len(labels_df), dtype=int).astype(str))
+    labels_df["id"] = labels_df["id"].astype(str)
+
+    base_df = load_data(data_path).copy()
+    if "id" not in base_df.columns:
+        base_df.insert(0, "id", np.arange(len(base_df), dtype=int).astype(str))
+    base_df["id"] = base_df["id"].astype(str)
+    base_df = base_df[["id", "text", "rating"]]
+
+    merged = labels_df.merge(base_df, on="id", how="left", suffixes=("", "_base"))
+    if "text" not in merged.columns:
+        merged["text"] = merged["text_base"]
+    else:
+        merged["text"] = merged["text"].fillna(merged["text_base"])
+    merged["text"] = merged["text"].fillna("").astype(str)
+
+    missing_labels = [label for label in ISSUE_LABELS if label not in merged.columns]
+    if missing_labels:
+        raise ValueError(f"Missing label columns in labels CSV: {missing_labels}")
+
+    label_df = merged[ISSUE_LABELS].apply(pd.to_numeric, errors="coerce")
+    valid_mask = label_df.isin([0, 1]).all(axis=1)
+    invalid_rows = int((~valid_mask).sum())
+    merged = merged.loc[valid_mask].copy()
+    label_df = label_df.loc[valid_mask].astype(int)
+
+    row_sum = label_df.sum(axis=1)
+    zero_rows = int((row_sum == 0).sum())
+    keep_mask = row_sum > 0
+    merged = merged.loc[keep_mask].copy()
+    label_df = label_df.loc[keep_mask].copy()
+
+    cleaning_cfg = load_stage1_cleaning_config(Path("."))
+    merged["clean_text"] = merged["text"].apply(lambda txt: clean_with_stage1(txt, cleaning_cfg))
+
+    sampled_rows = 0
+    if max_samples > 0 and len(merged) > max_samples:
+        rng = np.random.default_rng(seed)
+        idx = rng.choice(len(merged), size=int(max_samples), replace=False)
+        merged = merged.iloc[idx].reset_index(drop=True)
+        label_df = label_df.iloc[idx].reset_index(drop=True)
+        sampled_rows = int(max_samples)
+    else:
+        merged = merged.reset_index(drop=True)
+        label_df = label_df.reset_index(drop=True)
+
+    y = label_df[ISSUE_LABELS].to_numpy(dtype=np.int64)
+    prep_info = {
+        "rows_total_input": int(len(labels_df)),
+        "rows_invalid_labels_dropped": int(invalid_rows),
+        "rows_zero_labels_dropped": int(zero_rows),
+        "rows_after_cleaning": int(len(merged)),
+        "rows_sampled_cap": int(sampled_rows),
+        "cleaning": cleaning_cfg,
+    }
+    return merged, y, prep_info
+
+
+def _issue_labelset_codes(y: np.ndarray) -> np.ndarray:
+    codes: List[str] = []
+    for row in y:
+        active = [ISSUE_LABELS[idx] for idx, value in enumerate(row) if int(value) == 1]
+        codes.append("|".join(active) if active else "none")
+    return np.array(codes, dtype=object)
+
+
+def _can_issue_stratify(codes: np.ndarray) -> bool:
+    if len(codes) == 0:
+        return False
+    counts = pd.Series(codes).value_counts()
+    return bool(len(counts) > 1 and int(counts.min()) >= 2)
+
+
+def _split_issue_indices(
+    y: np.ndarray,
+    seed: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, str]:
+    idx = np.arange(len(y))
+    if len(idx) < 5:
+        raise ValueError("Need at least 5 labeled rows for split.")
+
+    codes = _issue_labelset_codes(y)
+    try:
+        if not _can_issue_stratify(codes):
+            raise ValueError("Insufficient support for labelset stratification.")
+        idx_train, idx_temp = train_test_split(
+            idx,
+            test_size=0.30,
+            random_state=seed,
+            stratify=codes,
+        )
+        temp_codes = codes[idx_temp]
+        if _can_issue_stratify(temp_codes):
+            idx_val, idx_test = train_test_split(
+                idx_temp,
+                test_size=2.0 / 3.0,
+                random_state=seed,
+                stratify=temp_codes,
+            )
+            return idx_train, idx_val, idx_test, "stratified_labelset"
+        idx_val, idx_test = train_test_split(
+            idx_temp,
+            test_size=2.0 / 3.0,
+            random_state=seed,
+            shuffle=True,
+        )
+        return idx_train, idx_val, idx_test, "partially_stratified"
+    except Exception:
+        idx_train, idx_temp = train_test_split(
+            idx,
+            test_size=0.30,
+            random_state=seed,
+            shuffle=True,
+        )
+        idx_val, idx_test = train_test_split(
+            idx_temp,
+            test_size=2.0 / 3.0,
+            random_state=seed,
+            shuffle=True,
+        )
+        return idx_train, idx_val, idx_test, "random"
+
+
+def _issue_metrics_overall(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    return {
+        "micro_f1": float(f1_score(y_true, y_pred, average="micro", zero_division=0)),
+        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
+        "subset_accuracy": float(accuracy_score(y_true, y_pred)),
+        "hamming_loss": float(hamming_loss(y_true, y_pred)),
+        "label_cardinality_true": float(np.mean(y_true.sum(axis=1))),
+        "label_cardinality_pred": float(np.mean(y_pred.sum(axis=1))),
+    }
+
+
+def _issue_metrics_per_label(y_true: np.ndarray, y_pred: np.ndarray, split: str, model: str) -> pd.DataFrame:
+    precision, recall, f1_vals, support = precision_recall_fscore_support(
+        y_true,
+        y_pred,
+        average=None,
+        zero_division=0,
+    )
+    pred_pos = y_pred.sum(axis=0)
+    rows: List[Dict[str, object]] = []
+    for idx, label in enumerate(ISSUE_LABELS):
+        rows.append(
+            {
+                "model": model,
+                "split": split,
+                "label": label,
+                "precision": float(precision[idx]),
+                "recall": float(recall[idx]),
+                "f1": float(f1_vals[idx]),
+                "support_true": int(support[idx]),
+                "predicted_positive": int(pred_pos[idx]),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _tune_issue_thresholds(y_true: np.ndarray, probs: np.ndarray) -> Dict[str, float]:
+    grid = np.arange(0.10, 0.91, 0.05)
+    tuned: Dict[str, float] = {}
+    for idx, label in enumerate(ISSUE_LABELS):
+        y_col = y_true[:, idx]
+        if np.unique(y_col).size < 2:
+            tuned[label] = 0.50
+            continue
+        best_thr = 0.50
+        best_f1 = -1.0
+        best_dist = 10.0
+        for thr in grid:
+            pred = (probs[:, idx] >= float(thr)).astype(int)
+            f1_val = float(f1_score(y_col, pred, zero_division=0))
+            dist = abs(float(thr) - 0.50)
+            if f1_val > best_f1 + 1e-12 or (abs(f1_val - best_f1) <= 1e-12 and dist < best_dist):
+                best_f1 = f1_val
+                best_thr = float(thr)
+                best_dist = dist
+        tuned[label] = float(best_thr)
+    return tuned
+
+
+def _apply_issue_thresholds(probs: np.ndarray, thresholds: Dict[str, float]) -> np.ndarray:
+    thr = np.array([float(thresholds.get(label, 0.5)) for label in ISSUE_LABELS], dtype=float)
+    return (probs >= thr).astype(np.int64)
+
+
+def _classic_issue_predict(texts: List[str], model_dir: Path) -> Optional[Dict[str, object]]:
+    bundle = load_issue_bundle(model_dir)
+    if bundle is None:
+        return None
+    cleaned = [clean_with_stage1(txt, bundle.cleaning) for txt in texts]
+    X = bundle.vectorizer.transform(cleaned)
+    if bundle.selector is not None:
+        X = bundle.selector.transform(X)
+    probs = bundle.model.predict_scores(X)
+    thresholds = {label: float(bundle.thresholds.get(label, 0.5)) for label in ISSUE_LABELS}
+    preds = _apply_issue_thresholds(probs, thresholds)
+    return {
+        "bundle": bundle,
+        "probs": probs,
+        "pred": preds,
+        "thresholds": thresholds,
+        "cleaned": cleaned,
+    }
+
+
+def run_issue_transformer_multilabel(args) -> None:
+    try:
+        import torch
+        from torch.utils.data import Dataset
+        from transformers import (
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+            Trainer,
+            TrainingArguments,
+        )
+    except ImportError:
+        print(
+            "[NLP EXT] transformers/torch not installed. "
+            "Install optional deps: pip install -r requirements-optional.txt"
+        )
+        return
+
+    np.random.seed(int(args.seed))
+    torch.manual_seed(int(args.seed))
+
+    max_train_samples = int(args.max_train_samples)
+    max_total_samples = int(args.max_total_samples)
+    max_length = int(args.max_length)
+    epochs = float(args.epochs)
+    batch_size = int(args.batch_size)
+    if args.fast_mode:
+        max_train_samples = min(max_train_samples, int(args.fast_max_train_samples))
+        max_total_samples = min(max_total_samples, int(args.fast_max_total_samples))
+        max_length = min(max_length, int(args.fast_max_length))
+        epochs = min(epochs, float(args.fast_epochs))
+        print(
+            "[NLP EXT] issue transformer fast_mode enabled: "
+            f"max_total_samples={max_total_samples}, max_train_samples={max_train_samples}, "
+            f"max_length={max_length}, epochs={epochs}"
+        )
+
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    df, y, prep_info = _prepare_issue_multilabel_dataframe(
+        labels_path=args.labels_path,
+        data_path=args.data_path,
+        seed=int(args.seed),
+        max_samples=max_total_samples,
+    )
+    idx_train, idx_val, idx_test, split_method = _split_issue_indices(y, seed=int(args.seed))
+
+    train_df = df.iloc[idx_train].reset_index(drop=True)
+    val_df = df.iloc[idx_val].reset_index(drop=True)
+    test_df = df.iloc[idx_test].reset_index(drop=True)
+    y_train = y[idx_train]
+    y_val = y[idx_val]
+    y_test = y[idx_test]
+
+    if max_train_samples > 0 and len(train_df) > max_train_samples:
+        rng = np.random.default_rng(int(args.seed))
+        sub_idx = rng.choice(len(train_df), size=max_train_samples, replace=False)
+        train_df = train_df.iloc[sub_idx].reset_index(drop=True)
+        y_train = y_train[sub_idx]
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+
+    class MultiLabelIssueDataset(Dataset):
+        def __init__(self, texts: List[str], labels: np.ndarray):
+            self.enc = tokenizer(
+                texts,
+                padding="max_length",
+                truncation=True,
+                max_length=max_length,
+                return_tensors="pt",
+            )
+            self.labels = torch.tensor(labels, dtype=torch.float32)
+
+        def __len__(self):
+            return int(self.labels.shape[0])
+
+        def __getitem__(self, idx: int):
+            item = {k: v[idx] for k, v in self.enc.items()}
+            item["labels"] = self.labels[idx]
+            return item
+
+    train_ds = MultiLabelIssueDataset(train_df["clean_text"].tolist(), y_train)
+    val_ds = MultiLabelIssueDataset(val_df["clean_text"].tolist(), y_val)
+    test_ds = MultiLabelIssueDataset(test_df["clean_text"].tolist(), y_test)
+
+    pos_counts = y_train.sum(axis=0).astype(float)
+    neg_counts = float(len(y_train)) - pos_counts
+    pos_weight = torch.tensor((neg_counts + 1.0) / (pos_counts + 1.0), dtype=torch.float32)
+
+    class MultiLabelTrainer(Trainer):
+        def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+            labels = inputs.pop("labels")
+            outputs = model(**inputs)
+            logits = outputs.get("logits")
+            loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight.to(model.device))
+            loss = loss_fn(logits, labels)
+            return (loss, outputs) if return_outputs else loss
+
+    model = AutoModelForSequenceClassification.from_pretrained(
+        args.model_name,
+        num_labels=len(ISSUE_LABELS),
+        problem_type="multi_label_classification",
+    )
+    train_args = TrainingArguments(
+        output_dir=str(out_dir / "hf_runs_issue"),
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        num_train_epochs=epochs,
+        learning_rate=float(args.lr),
+        evaluation_strategy="no",
+        logging_strategy="steps",
+        logging_steps=50 if args.fast_mode else 250,
+        save_strategy="no",
+        dataloader_num_workers=0,
+        seed=int(args.seed),
+        report_to=[],
+    )
+    trainer = MultiLabelTrainer(
+        model=model,
+        args=train_args,
+        train_dataset=train_ds,
+        eval_dataset=val_ds,
+        tokenizer=tokenizer,
+    )
+    trainer.train()
+
+    val_logits = trainer.predict(val_ds).predictions
+    test_logits = trainer.predict(test_ds).predictions
+    val_probs = _sigmoid(np.asarray(val_logits))
+    test_probs = _sigmoid(np.asarray(test_logits))
+
+    thresholds = {label: 0.5 for label in ISSUE_LABELS}
+    if bool(args.tune_thresholds):
+        thresholds = _tune_issue_thresholds(y_val, val_probs)
+
+    val_pred = _apply_issue_thresholds(val_probs, thresholds)
+    test_pred = _apply_issue_thresholds(test_probs, thresholds)
+
+    overall_rows = []
+    per_label_frames = []
+    for split_name, y_true, y_pred in [("val", y_val, val_pred), ("test", y_test, test_pred)]:
+        row = {"model": "transformer_multilabel", "split": split_name}
+        row.update(_issue_metrics_overall(y_true, y_pred))
+        overall_rows.append(row)
+        per_label_frames.append(
+            _issue_metrics_per_label(
+                y_true=y_true,
+                y_pred=y_pred,
+                split=split_name,
+                model="transformer_multilabel",
+            )
+        )
+    overall_df = pd.DataFrame(overall_rows)
+    per_label_df = pd.concat(per_label_frames, ignore_index=True)
+    overall_df.to_csv(out_dir / "nlp_issue_transformer_metrics_overall.csv", index=False)
+    per_label_df.to_csv(out_dir / "nlp_issue_transformer_metrics_per_label.csv", index=False)
+
+    threshold_df = pd.DataFrame(
+        {"label": ISSUE_LABELS, "threshold": [float(thresholds[label]) for label in ISSUE_LABELS]}
+    )
+    threshold_df.to_csv(out_dir / "nlp_issue_transformer_thresholds.csv", index=False)
+
+    plt.figure(figsize=(10, 4))
+    test_f1 = (
+        per_label_df[per_label_df["split"] == "test"]
+        .set_index("label")
+        .loc[ISSUE_LABELS]["f1"]
+    )
+    plt.bar(ISSUE_LABELS, test_f1.values, color="#2a9d8f")
+    plt.xticks(rotation=30, ha="right")
+    plt.ylim(0.0, 1.0)
+    plt.ylabel("F1")
+    plt.title("Per-label F1 (test, transformer multi-label)")
+    plt.tight_layout()
+    plt.savefig(out_dir / "nlp_issue_transformer_per_label_f1.png", dpi=220)
+    plt.close()
+
+    hybrid_rows: List[Dict[str, object]] = []
+    routing_df = pd.DataFrame()
+    classic_payload = _classic_issue_predict(test_df["text"].tolist(), model_dir=args.model_dir)
+    if classic_payload is not None:
+        classic_pred = classic_payload["pred"]
+        classic_probs = classic_payload["probs"]
+        thr = np.array([classic_payload["thresholds"][label] for label in ISSUE_LABELS], dtype=float)
+        min_margin = np.min(np.abs(classic_probs - thr), axis=1)
+        uncertain_mask = min_margin < float(args.hybrid_margin)
+        max_route_rate = float(np.clip(float(args.hybrid_max_route_rate), 0.0, 1.0))
+        if max_route_rate <= 0.0:
+            uncertain_mask = np.zeros(len(min_margin), dtype=bool)
+        elif max_route_rate < 1.0 and float(np.mean(uncertain_mask)) > max_route_rate:
+            cutoff = float(np.quantile(min_margin, max_route_rate))
+            uncertain_mask = min_margin <= cutoff
+
+        hybrid_pred = classic_pred.copy()
+        hybrid_pred[uncertain_mask] = test_pred[uncertain_mask]
+
+        for name, pred in [
+            ("classic_issue_model", classic_pred),
+            ("transformer_multilabel", test_pred),
+            ("hybrid_route", hybrid_pred),
+        ]:
+            row = {"model": name, "split": "test"}
+            row.update(_issue_metrics_overall(y_test, pred))
+            hybrid_rows.append(row)
+
+        routing_df = pd.DataFrame(
+            {
+                "id": test_df["id"].astype(str),
+                "classic_min_margin": min_margin.astype(float),
+                "route_to_transformer": uncertain_mask.astype(int),
+                "classic_label_count": classic_pred.sum(axis=1).astype(int),
+                "transformer_label_count": test_pred.sum(axis=1).astype(int),
+                "hybrid_label_count": hybrid_pred.sum(axis=1).astype(int),
+            }
+        )
+        routing_df.to_csv(out_dir / "nlp_issue_hybrid_routing.csv", index=False)
+        pd.DataFrame(hybrid_rows).to_csv(out_dir / "nlp_issue_hybrid_metrics.csv", index=False)
+
+    if not args.skip_model_save:
+        model_save_dir = args.model_save_dir
+        model_save_dir.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(model_save_dir)
+        tokenizer.save_pretrained(model_save_dir)
+        (model_save_dir / "label_list.json").write_text(json.dumps(ISSUE_LABELS, indent=2), encoding="utf-8")
+        (model_save_dir / "thresholds.json").write_text(json.dumps(thresholds, indent=2), encoding="utf-8")
+        print(f"[NLP EXT] issue transformer model saved to {model_save_dir}")
+
+    quantized_path = None
+    fp32_state_path = None
+    if bool(args.export_quantized):
+        fp32_state_path = out_dir / "nlp_issue_transformer_fp32_state.pt"
+        quantized_path = out_dir / "nlp_issue_transformer_quantized_state.pt"
+        cpu_model = model.to("cpu")
+        torch.save(cpu_model.state_dict(), fp32_state_path)
+        quantized_model = torch.quantization.quantize_dynamic(
+            cpu_model,
+            {torch.nn.Linear},
+            dtype=torch.qint8,
+        )
+        torch.save(quantized_model.state_dict(), quantized_path)
+
+    summary_lines = [
+        "# Issue Transformer Multi-label Summary",
+        "",
+        f"model_name: {args.model_name}",
+        f"split_method: {split_method}",
+        f"train_size: {len(train_df)}",
+        f"val_size: {len(val_df)}",
+        f"test_size: {len(test_df)}",
+        f"threshold_mode: {'tuned' if bool(args.tune_thresholds) else 'fixed_0.5'}",
+        f"hybrid_margin: {float(args.hybrid_margin):.3f}",
+        f"hybrid_max_route_rate: {float(args.hybrid_max_route_rate):.3f}",
+        "",
+        "Main test metrics (transformer_multilabel):",
+    ]
+    test_row = overall_df[overall_df["split"] == "test"].iloc[0]
+    summary_lines.extend(
+        [
+            f"- micro_f1: {float(test_row['micro_f1']):.4f}",
+            f"- macro_f1: {float(test_row['macro_f1']):.4f}",
+            f"- subset_accuracy: {float(test_row['subset_accuracy']):.4f}",
+            f"- hamming_loss: {float(test_row['hamming_loss']):.4f}",
+            "",
+            "Files:",
+            "- nlp_issue_transformer_metrics_overall.csv",
+            "- nlp_issue_transformer_metrics_per_label.csv",
+            "- nlp_issue_transformer_thresholds.csv",
+            "- nlp_issue_transformer_per_label_f1.png",
+        ]
+    )
+    if not routing_df.empty:
+        summary_lines.extend(
+            [
+                "- nlp_issue_hybrid_metrics.csv",
+                "- nlp_issue_hybrid_routing.csv",
+                f"- hybrid_routed_rows: {int(routing_df['route_to_transformer'].sum())}",
+            ]
+        )
+    if quantized_path is not None and fp32_state_path is not None:
+        fp32_size_mb = fp32_state_path.stat().st_size / (1024 * 1024)
+        quant_size_mb = quantized_path.stat().st_size / (1024 * 1024)
+        summary_lines.extend(
+            [
+                "- nlp_issue_transformer_fp32_state.pt",
+                "- nlp_issue_transformer_quantized_state.pt",
+                f"- fp32_state_size_mb: {fp32_size_mb:.2f}",
+                f"- quantized_state_size_mb: {quant_size_mb:.2f}",
+            ]
+        )
+    (out_dir / "nlp_issue_transformer_summary.md").write_text("\n".join(summary_lines), encoding="utf-8")
+
+    train_config = {
+        "labels_path": str(args.labels_path),
+        "data_path": str(args.data_path),
+        "model_name": str(args.model_name),
+        "seed": int(args.seed),
+        "epochs": float(epochs),
+        "batch_size": int(batch_size),
+        "max_length": int(max_length),
+        "max_total_samples": int(max_total_samples),
+        "max_train_samples": int(max_train_samples),
+        "split_method": split_method,
+        "tune_thresholds": bool(args.tune_thresholds),
+        "hybrid_margin": float(args.hybrid_margin),
+        "hybrid_max_route_rate": float(args.hybrid_max_route_rate),
+        "classic_model_dir": str(args.model_dir),
+        "skip_model_save": bool(args.skip_model_save),
+        "export_quantized": bool(args.export_quantized),
+        "prep_info": prep_info,
+    }
+    (out_dir / "nlp_issue_transformer_train_config.json").write_text(
+        json.dumps(train_config, indent=2),
+        encoding="utf-8",
+    )
+    print(f"[NLP EXT] Issue transformer outputs saved to {out_dir}")
+
+
 def run_rnn_lstm_baseline(args) -> None:
     try:
         import torch
@@ -1518,6 +2062,7 @@ def build_course_fit_matrix(args) -> None:
     rnn_path = out_dir / "nlp_rnn_lstm_metrics.csv"
     mlm_path = out_dir / "nlp_mlm_probe.csv"
     llm_prompt_path = out_dir / "nlp_llm_prompt_metrics.csv"
+    issue_tf_path = out_dir / "nlp_issue_transformer_metrics_overall.csv"
     trans_path = Path("results/nlp_ext/nlp_metrics.csv")
     issue_path = Path("results/issue_steps_char_demo/02_metrics_overall.csv")
 
@@ -1527,6 +2072,7 @@ def build_course_fit_matrix(args) -> None:
     has_rnn = rnn_path.exists()
     has_mlm = mlm_path.exists()
     has_llm_prompt = llm_prompt_path.exists()
+    has_issue_tf = issue_tf_path.exists()
     has_trans = trans_path.exists()
     has_issue = issue_path.exists()
 
@@ -1534,16 +2080,16 @@ def build_course_fit_matrix(args) -> None:
     topics = [
         ("Probability", 1.0 if has_ngram or has_bench else 0.5),
         ("Regular Expressions", 0.5),
-        ("Evaluation Measures", 1.0 if has_bench or has_ablation or has_issue else 0.7),
+        ("Evaluation Measures", 1.0 if has_bench or has_ablation or has_issue or has_issue_tf else 0.7),
         ("N-Gram Language Models", 1.0 if has_ngram else 0.2),
         ("Naive Bayes", 1.0 if has_bench else 0.2),
         ("Perceptron", 1.0 if has_bench else 0.2),
         ("Logistic Regression", 1.0),
         ("Feed-forward Neural Networks", 1.0 if has_bench else 0.3),
-        ("Pytorch Basic", 1.0 if has_rnn or has_trans or has_mlm else 0.2),
+        ("Pytorch Basic", 1.0 if has_rnn or has_trans or has_mlm or has_issue_tf else 0.2),
         ("Vector Semantics and Embeddings", 0.8 if has_bench or has_ablation else 0.4),
         ("Recurrent Neural Networks", 1.0 if has_rnn else 0.2),
-        ("Transformers and LLMs", 1.0 if has_trans or has_mlm or has_llm_prompt else 0.3),
+        ("Transformers and LLMs", 1.0 if has_trans or has_mlm or has_llm_prompt or has_issue_tf else 0.3),
         ("Masked Language Models", 1.0 if has_mlm else 0.2),
         ("Applications of LLMs", 0.9 if has_llm_prompt else 0.3),
     ]
