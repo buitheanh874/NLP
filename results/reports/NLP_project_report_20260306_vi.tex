@@ -1,0 +1,942 @@
+﻿\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\geometry{margin=1in}
+\onehalfspacing
+\setcounter{tocdepth}{3}
+\renewcommand{\arraystretch}{1.15}
+
+\title{BÃ¡o cÃ¡o dá»± Ã¡n xá»­ lÃ½ ngÃ´n ngá»¯ tá»± nhiÃªn\\PhÃ¢n tÃ­ch tÃ¬nh cáº£m cho cÃ¡c bÃ i Ä‘Ã¡nh giÃ¡ thÆ°Æ¡ng máº¡i Ä‘iá»‡n tá»­ báº±ng Ká»¹ thuáº­t há»c mÃ¡y.}
+\author{Team SkyDom+}
+\date{thÃ¡ng 3 nÄƒm 2026}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{1.0cm}
+{\LARGE PhÃ¢n tÃ­ch tÃ¬nh cáº£m cho cÃ¡c bÃ i Ä‘Ã¡nh giÃ¡ thÆ°Æ¡ng máº¡i Ä‘iá»‡n tá»­\par}
+\vspace{0.2cm}
+{\LARGE sá»­ dá»¥ng Ká»¹ thuáº­t há»c mÃ¡y.\par}
+\vspace{0.8cm}
+{\Large BÃ¡o cÃ¡o nghiÃªn cá»©u Ä‘iá»ƒn hÃ¬nh\par}
+\vspace{0.8cm}
+{\large Äá»™i: Äá»™i SkyDom+\par}
+\vspace{0.3cm}
+{\large ThÃ nh viÃªn nhÃ³m:\par}
+\vspace{0.4cm}
+{\large
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.8cm} >{\raggedright\arraybackslash}p{2.7cm}@{}}
+Nguyen Nhu Tien Tuan & 22BA13314 \\
+Tran Hien Chuong & 22BA13056 \\
+Do Gia Bao & 22BA13042 \\
+Bui The Anh & 22BA13007 \\
+Le Duc An & 22BA13002 \\
+Pham Quang Tung & 22BA13320 \\
+Khuong Bao Duc & 22BA13077 \\
+\end{tabular}\par}
+\vfill
+{\large NgÃ y 6 thÃ¡ng 3 nÄƒm 2026\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+\begin{abstract}
+BÃ¡o cÃ¡o nÃ y trÃ¬nh bÃ y má»™t dá»± Ã¡n NLP toÃ n diá»‡n Ä‘á»ƒ xem xÃ©t hiá»ƒu biáº¿t vá» dá»¯ liá»‡u Tháº» quÃ  táº·ng Amazon. Quy trÃ¬nh hiá»‡n táº¡i cÃ³ ba lá»›p váº­n hÃ nh: phÃ¢n loáº¡i cáº£m tÃ­nh vá»›i kháº£ nÄƒng kiá»ƒm soÃ¡t Ä‘á»™ khÃ´ng cháº¯c cháº¯n, trÃ­ch xuáº¥t váº¥n Ä‘á» Ä‘a nhÃ£n vÃ  má»Ÿ rá»™ng theo ngá»¯ cáº£nh dá»±a trÃªn mÃ¡y biáº¿n Ã¡p. Táº­p dá»¯ liá»‡u nguá»“n cÃ³ 152.410 bÃ i Ä‘Ã¡nh giÃ¡, trong khi chÃº thÃ­ch váº¥n Ä‘á» chá»©a 19.000 hÃ ng Ä‘Æ°á»£c há»£p nháº¥t vÃ  xÃ¡c thá»±c. Biáº¿n thá»ƒ cáº£m tÃ­nh cá»• Ä‘iá»ƒn Ä‘Ã£ chá»n (V6: tá»« cá»™ng vá»›i kÃ½ tá»± TF-IDF cÃ³ gáº¯n tháº» phá»§ Ä‘á»‹nh) Ä‘áº¡t Ä‘á»™ chÃ­nh xÃ¡c kiá»ƒm tra\_0 lÃ  0,677, thu há»“i\_0 lÃ  0,932 vÃ  F2\_0 lÃ  0,867. Pháº§n má»Ÿ rá»™ng mÃ¡y biáº¿n Ã¡p Ä‘áº¡t Ä‘á»™ chÃ­nh xÃ¡c kiá»ƒm tra\_0 lÃ  0,822, thu há»“i\_0 lÃ  0,833 vÃ  F2\_0 lÃ  0,831 vá»›i pháº¡m vi bao phá»§ 0,910 á»Ÿ ngÆ°á»¡ng 0,40/0,60. TrÃ¬nh trÃ­ch xuáº¥t váº¥n Ä‘á» Ä‘áº¡t kiá»ƒm tra micro-F1 lÃ  0,765 cho mÃ´ hÃ¬nh tá»« vÃ  0,763 cho mÃ´ hÃ¬nh kÃ½ tá»± tá»« cá»™ng, vá»›i macro-F1 tá»‘t hÆ¡n trong thiáº¿t láº­p sau. Äá»ƒ phÃ¹ há»£p cháº·t cháº½ vá»›i giÃ¡o trÃ¬nh NLP, dá»± Ã¡n cÅ©ng bao gá»“m má»™t bá»™ Ä‘iá»ƒm chuáº©n (Há»“i quy logistic, cÃ¡c biáº¿n thá»ƒ Naive Bayes, Perceptron, LinearSVM, máº¥t log SGD, logistic ngá»¯ nghÄ©a SVD, FFNN), khá»‘i mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram, Ä‘Æ°á»ng cÆ¡ sá»Ÿ RNN/LSTM, táº¡o pháº©m thÄƒm dÃ² MLM vÃ  Ä‘Æ°á»ng cÆ¡ sá»Ÿ kiá»ƒu nháº¯c nhá»Ÿ LLM. Ma tráº­n phÃ¹ há»£p vá»›i khÃ³a há»c Ä‘Æ°á»£c cáº­p nháº­t Ä‘Æ°á»£c tÃ­nh toÃ¡n tá»« cÃ¡c táº¡o pháº©m Ä‘Æ°á»£c táº¡o ra bÃ¡o cÃ¡o má»©c Ä‘á»™ bao phá»§ giÃ¡o trÃ¬nh Æ°á»›c tÃ­nh lÃ  94,3\%.
+ B?n c?p nh?t Level 3 trong m? ngu?n hi?n t?i b? sung t?m class-weight theo t?ng label, calibration x?c su?t cho m? h?nh issue v? command ablation classic; ? l?n ch?y m?i nh?t, ablation ch?n V7 l? bi?n th? c? trade-off negative-first t?t nh?t.
+\end{abstract}
+
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Giá»›i thiá»‡u}
+\subsection{Bá»‘i cáº£nh}
+NgÃ´n ngá»¯ tá»± nhiÃªn trong Ä‘Ã¡nh giÃ¡ cá»§a ngÆ°á»i dÃ¹ng khÃ¡ á»“n Ã o, ngáº¯n gá»n vÃ  há»—n táº¡p. Má»™t Ä‘Ã¡nh giÃ¡ cÃ³ thá»ƒ bao gá»“m khen ngá»£i, phÃ n nÃ n, tiáº¿ng lÃ³ng, lá»—i Ä‘Ã¡nh mÃ¡y vÃ  cÃ¡c tá»« miá»n trong cÃ¹ng má»™t cÃ¢u. Äiá»u nÃ y lÃ m cho viá»‡c Ä‘Ã¡nh giÃ¡ hiá»ƒu Ä‘Æ°á»£c má»™t váº¥n Ä‘á» NLP thá»±c táº¿ trong Ä‘Ã³ cáº£ phÆ°Æ¡ng phÃ¡p cá»• Ä‘iá»ƒn vÃ  hiá»‡n Ä‘áº¡i Ä‘á»u há»¯u Ã­ch \cite{jurafsky2026,turney2002}.
+
+\subsection{TuyÃªn bá»‘ váº¥n Ä‘á»}
+NghiÃªn cá»©u nÃ y táº­p trung vÃ o cÃ¡c Ä‘Ã¡nh giÃ¡ vá» Tháº» quÃ  táº·ng Amazon. Má»¥c tiÃªu khÃ´ng chá»‰ giá»›i háº¡n á»Ÿ viá»‡c phÃ¢n biá»‡t cáº£m xÃºc tÃ­ch cá»±c vÃ  tiÃªu cá»±c; Ä‘Ã³ lÃ  xÃ¢y dá»±ng má»™t quy trÃ¬nh xem xÃ©t-hiá»ƒu biáº¿t Ä‘á»ƒ há»— trá»£ cÃ¡c quyáº¿t Ä‘á»‹nh nháº­n thá»©c Ä‘Æ°á»£c sá»± khÃ´ng cháº¯c cháº¯n vÃ  Ä‘á»‹nh tuyáº¿n á»Ÿ cáº¥p Ä‘á»™ váº¥n Ä‘á» cho cÃ¡c hoáº¡t Ä‘á»™ng dá»‹ch vá»¥ háº¡ nguá»“n.
+
+\subsection{Má»¥c tiÃªu vÃ  pháº¡m vi}
+Má»¥c tiÃªu cá»§a dá»± Ã¡n lÃ :
+\begin{enumerate}
+\item XÃ¢y dá»±ng bá»™ phÃ¢n loáº¡i cáº£m tÃ­nh cÃ³ kháº£ nÄƒng thu há»“i cao, nháº­n thá»©c rá»§i ro Ä‘á»ƒ phÃ¢n loáº¡i pháº£n há»“i tiÃªu cá»±c.
+\item TrÃ­ch xuáº¥t cÃ¡c danh má»¥c váº¥n Ä‘á» cá»¥ thá»ƒ báº±ng cÃ¡ch sá»­ dá»¥ng phÃ¢n loáº¡i vÄƒn báº£n nhiá»u nhÃ£n.
+\item So sÃ¡nh cÃ¡c mÃ´ hÃ¬nh thÆ°a thá»›t cá»• Ä‘iá»ƒn vá»›i mÃ´ hÃ¬nh theo ngá»¯ cáº£nh dá»±a trÃªn mÃ¡y biáº¿n Ã¡p.
+\item Má»Ÿ rá»™ng pháº¡m vi báº£o hiá»ƒm nhÃ¢n táº¡o Ä‘á»ƒ phÃ¹ há»£p vá»›i cÃ¡c chá»§ Ä‘á» khÃ³a há»c NLP cá»‘t lÃµi vÃ  nÃ¢ng cao.
+\item Giá»¯ táº¥t cáº£ cÃ¡c káº¿t quáº£ Ä‘áº§u ra cÃ³ thá»ƒ tÃ¡i táº¡o tá»« cÃ¡c lá»‡nh vÃ  tá»‡p sá»‘ liá»‡u Ä‘Ã£ lÆ°u.
+\end{enumerate}
+
+\subsection{Nhá»¯ng gÃ¬ chÃºng tÃ´i Ä‘Ã£ lÃ m trong dá»± Ã¡n nÃ y}
+Viá»‡c triá»ƒn khai Ä‘Æ°á»£c cáº¥u trÃºc nhÆ° má»™t Ä‘Æ°á»ng dáº«n NLP tá»« Ä‘áº§u Ä‘áº¿n cuá»‘i. NÃ³ bao gá»“m chuáº©n hÃ³a vÄƒn báº£n, mÃ´ hÃ¬nh hÃ³a tÃ­nh nÄƒng tá»« vá»±ng vÃ  tá»« phá»¥, xá»­ lÃ½ phá»§ Ä‘á»‹nh vÃ  tÆ°Æ¡ng pháº£n, Ä‘Ã o táº¡o cÃ³ giÃ¡m sÃ¡t, kiá»ƒm soÃ¡t Ä‘á»™ khÃ´ng cháº¯c cháº¯n, trÃ­ch xuáº¥t váº¥n Ä‘á», má»Ÿ rá»™ng biáº¿n Ã¡p, tá»•ng há»£p Ä‘iá»ƒm chuáº©n vÃ  tÃ­ch há»£p trÃ¬nh diá»…n.
+
+\subsection{ÄÃ³ng gÃ³p chÃ­nh}
+Nhá»¯ng Ä‘Ã³ng gÃ³p chÃ­nh cá»§a tráº¡ng thÃ¡i kho lÆ°u trá»¯ hiá»‡n táº¡i lÃ :
+\begin{enumerate}
+\item Má»™t quy trÃ¬nh cáº£m tÃ­nh cÃ³ thá»ƒ tÃ¡i táº¡o vá»›i kháº£ nÄƒng thu há»“i cáº¥p 0 cao vÃ  phÃ¢n tÃ­ch Ä‘Ã¡nh Ä‘á»•i ngÆ°á»¡ng rÃµ rÃ ng.
+\item MÃ´-Ä‘un trÃ­ch xuáº¥t váº¥n Ä‘á» Ä‘a nhÃ£n vá»›i kháº£ nÄƒng Ä‘iá»u chá»‰nh ngÆ°á»¡ng trÃªn má»—i nhÃ£n vÃ  sá»‘ liá»‡u trÃªn má»—i nhÃ£n.
+\item Má»™t pháº§n má»Ÿ rá»™ng mÃ¡y biáº¿n Ã¡p vá»›i cÃ¡c sá»‘ liá»‡u dá»± Ä‘oÃ¡n cÃ³ chá»n lá»c vÃ  Ä‘Ã¡nh giÃ¡ trÆ°á»ng há»£p khÃ³.
+\item GÃ³i nÃ¢ng cáº¥p giÃ¡o trÃ¬nh bao gá»“m NB, Perceptron, FFNN, N-gram LM, RNN/LSTM, Ä‘áº§u dÃ² MLM vÃ  Ä‘Æ°á»ng cÆ¡ sá»Ÿ nháº¯c nhá»Ÿ LLM.
+\item Má»™t bá»™ tÃ i liá»‡u bao gá»“m ma tráº­n Ä‘Ã³ng gÃ³p, máº«u cá»•ng cháº¥t lÆ°á»£ng, báº£ng Ä‘iá»ƒm, bÃ i kiá»ƒm tra vÃ  táº­p lá»‡nh trÃ¬nh diá»…n.
+\end{enumerate}
+
+\subsection{Triá»ƒn khai thá»±c táº¿}
+Dá»± Ã¡n cung cáº¥p cáº£ Ä‘Æ°á»ng dáº«n thá»±c thi CLI vÃ  giao diá»‡n ngÆ°á»i dÃ¹ng nháº¹. CÃ¡c lá»‡nh cá»‘t lÃµi Ä‘Æ°á»£c ghi láº¡i trong \texttt{README.md}, káº¿t quáº£ Ä‘áº§u ra Ä‘Æ°á»£c lÆ°u trá»¯ trong \texttt{results/} vÃ  kiá»ƒm tra khÃ³i xÃ¡c thá»±c cÃ¡c Ä‘Æ°á»ng dáº«n thá»±c thi quan trá»ng. Cáº¥u hÃ¬nh nÃ y há»— trá»£ kháº£ nÄƒng tÃ¡i táº¡o trong cáº£ trÃ¬nh bÃ y há»c thuáº­t vÃ  cÃ i Ä‘áº·t thá»±c hiá»‡n láº¡i thá»±c táº¿.
+
+\subsection{Cáº¥u trÃºc bÃ¡o cÃ¡o}
+BÃ¡o cÃ¡o tuÃ¢n theo cáº¥u trÃºc cáº¥p cao tÆ°Æ¡ng tá»± Ä‘Æ°á»£c sá»­ dá»¥ng trong \texttt{GP.pdf}: khung váº¥n Ä‘á», phÆ°Æ¡ng phÃ¡p luáº­n, thiáº¿t láº­p thá»­ nghiá»‡m, káº¿t quáº£ Ä‘á»‹nh lÆ°á»£ng, báº±ng chá»©ng quy trÃ¬nh lÃ m viá»‡c, káº¿ hoáº¡ch demo, nhá»¯ng háº¡n cháº¿ vÃ  káº¿t luáº­n.
+
+\section{Bá»‘i cáº£nh vÃ  cÃ¡c tÃ¡c pháº©m liÃªn quan}
+\subsection{ÄÆ°á»ng cÆ¡ sá»Ÿ phÃ¢n loáº¡i cáº£m xÃºc vÃ  vÄƒn báº£n}
+CÃ¡c mÃ´ hÃ¬nh cáº£m tÃ­nh cá»• Ä‘iá»ƒn sá»­ dá»¥ng cÃ¡c tÃ­nh nÄƒng n-gram thÆ°a thá»›t vÃ  bá»™ phÃ¢n loáº¡i tuyáº¿n tÃ­nh váº«n lÃ  cÃ¡c Ä‘Æ°á»ng cÆ¡ sá»Ÿ Ä‘Æ°á»£c thiáº¿t láº­p tá»‘t cho vÄƒn báº£n á»“n Ã o do ngÆ°á»i dÃ¹ng táº¡o \cite{wang2012,manning2008ir}. ChÃºng cÃ³ hiá»‡u quáº£ vá» máº·t tÃ­nh toÃ¡n, cÃ³ thá»ƒ giáº£i thÃ­ch Ä‘Æ°á»£c thÃ´ng qua trá»ng sá»‘ Ä‘áº·c trÆ°ng vÃ  phÃ¹ há»£p Ä‘á»ƒ kiá»ƒm soÃ¡t rá»§i ro dá»±a trÃªn ngÆ°á»¡ng.
+
+\subsection{Phá»§ Ä‘á»‹nh vÃ  tÆ°Æ¡ng pháº£n trong tÃ¬nh cáº£m}
+Pháº¡m vi phá»§ Ä‘á»‹nh lÃ  má»™t thÃ¡ch thá»©c Ä‘Ã£ biáº¿t trong phÃ¢n tÃ­ch cáº£m tÃ­nh \cite{wiegand2010}. Trong vÄƒn báº£n Ä‘Ã¡nh giÃ¡, cÃ¡c máº«u nhÆ° \textit{khÃ´ng tá»‡} vÃ  cÃ¡c dáº¡ng tÆ°Æ¡ng pháº£n nhÆ° \textit{tá»‘t nhÆ°ng giao hÃ ng muá»™n} cÃ³ thá»ƒ láº­t ngÆ°á»£c ranh giá»›i quyáº¿t Ä‘á»‹nh. Äiá»u nÃ y thÃºc Ä‘áº©y viá»‡c gáº¯n tháº» phá»§ Ä‘á»‹nh rÃµ rÃ ng vÃ  thiáº¿t káº¿ tÃ­nh nÄƒng nháº­n biáº¿t má»‡nh Ä‘á».
+
+\subsection{Há»c nhiá»u nhÃ£n Ä‘á»ƒ gáº¯n tháº» váº¥n Ä‘á»}
+TrÃ­ch xuáº¥t váº¥n Ä‘á» lÃ  má»™t váº¥n Ä‘á» cÃ³ nhiá»u nhÃ£n vÃ¬ má»™t bÃ i Ä‘Ã¡nh giÃ¡ cÃ³ thá»ƒ Ä‘á» cáº­p Ä‘áº¿n nhiá»u danh má»¥c khiáº¿u náº¡i \cite{tsoumakas2011,zhang2014}. Thiáº¿t láº­p má»™t so vá»›i pháº§n cÃ²n láº¡i vá»›i hiá»‡u chuáº©n ngÆ°á»¡ng trÃªn má»—i nhÃ£n ráº¥t thiáº¿t thá»±c Ä‘á»‘i vá»›i viá»‡c phÃ¢n phá»‘i nhÃ£n khÃ´ng cÃ¢n báº±ng.
+
+\subsection{MÃ´ hÃ¬nh hÃ³a theo ngá»¯ cáº£nh vÃ  pháº§n má»Ÿ rá»™ng biáº¿n Ã¡p}
+Bá»™ mÃ£ hÃ³a dá»±a trÃªn mÃ¡y biáº¿n Ã¡p náº¯m báº¯t ngá»¯ nghÄ©a theo ngá»¯ cáº£nh vÃ  cÃ³ thá»ƒ cáº£i thiá»‡n Ä‘á»™ á»•n Ä‘á»‹nh cá»§a vÄƒn báº£n ngáº¯n thÃ nh ngá»¯ \cite{vaswani2017,devlin2019}. Tuy nhiÃªn, trong mÃ´i trÆ°á»ng nháº­n thá»©c Ä‘Æ°á»£c rá»§i ro, cÃ¡c ngÆ°á»¡ng chá»n lá»c vÃ  sá»± Ä‘Ã¡nh Ä‘á»•i má»¥c tiÃªu cá»¥ thá»ƒ cá»§a doanh nghiá»‡p váº«n ráº¥t cáº§n thiáº¿t.
+
+\section{Äá»‹nh nghÄ©a váº¥n Ä‘á» NLP}
+\subsection{Nhiá»‡m vá»¥ A: Hiá»ƒu biáº¿t vá» tÃ¬nh cáº£m}
+Nhiá»‡m vá»¥ A lÃ  phÃ¢n loáº¡i cáº£m xÃºc nhá»‹ phÃ¢n tá»« vÄƒn báº£n Ä‘Ã¡nh giÃ¡. Xáº¿p háº¡ng 1 vÃ  2 Ä‘Æ°á»£c Ã¡nh xáº¡ tá»›i lá»›p phá»§ Ä‘á»‹nh. Xáº¿p háº¡ng 4 vÃ  5 Ä‘Æ°á»£c Ã¡nh xáº¡ tá»›i lá»›p tÃ­ch cá»±c. Xáº¿p háº¡ng cÃ³ giÃ¡ trá»‹ 3 Ä‘Æ°á»£c sá»­ dá»¥ng Ä‘á»ƒ phÃ¢n tÃ­ch Ä‘á»™ khÃ´ng cháº¯c cháº¯n vÃ  khÃ´ng náº±m trong chÆ°Æ¡ng trÃ¬nh Ä‘Ã o táº¡o Ä‘Æ°á»£c giÃ¡m sÃ¡t cháº·t cháº½ \cite{turney2002,wang2012}.
+
+ChÃ­nh sÃ¡ch quyáº¿t Ä‘á»‹nh khÃ´ng Ä‘áº·t tÃ­nh chÃ­nh xÃ¡c lÃªn hÃ ng Ä‘áº§u. Trong quÃ¡ trÃ¬nh phÃ¢n loáº¡i, káº¿t quáº£ Ã¢m tÃ­nh giáº£ trÃªn cÃ¡c Ä‘Ã¡nh giÃ¡ tiÃªu cá»±c ráº¥t tá»‘n kÃ©m. Do Ä‘Ã³, viá»‡c lá»±a chá»n mÃ´ hÃ¬nh tuÃ¢n theo phÆ°Æ¡ng phÃ¡p phá»ng Ä‘oÃ¡n phá»§ Ä‘á»‹nh Ä‘áº§u tiÃªn: Æ°u tiÃªn thu há»“i cho lá»›p 0, sau Ä‘Ã³ lÃ  F2 cho lá»›p 0, sau Ä‘Ã³ lÃ  Ä‘á»™ chÃ­nh xÃ¡c cho lá»›p 0.
+
+\subsection{Nhiá»‡m vá»¥ B: TrÃ­ch xuáº¥t váº¥n Ä‘á»}
+Nhiá»‡m vá»¥ B lÃ  trÃ­ch xuáº¥t váº¥n Ä‘á» Ä‘a nhÃ£n. Má»™t bÃ i Ä‘Ã¡nh giÃ¡ cÃ³ thá»ƒ chá»©a nhiá»u váº¥n Ä‘á» nÃªn viá»‡c gáº¯n tháº» má»™t nhÃ£n lÃ  khÃ´ng Ä‘á»§ \cite{tsoumakas2011,zhang2014}. Bá»™ nhÃ£n Ä‘áº§u ra trong dá»± Ã¡n nÃ y cÃ³ chÃ­n loáº¡i váº¥n Ä‘á» vÃ  cho phÃ©p gÃ¡n nhiá»u nhÃ£n trÃªn má»—i hÃ ng.
+
+Nhiá»‡m vá»¥ nÃ y Ã¡nh xáº¡ vÄƒn báº£n Ä‘Ã¡nh giÃ¡ phi cáº¥u trÃºc tá»›i cÃ¡c tÃ­n hiá»‡u váº¥n Ä‘á» cÃ³ cáº¥u trÃºc. NÃ³ cho phÃ©p chuyá»ƒn Ä‘á»•i tá»« káº¿t quáº£ Ä‘áº§u ra tÃ¬nh cáº£m chung sang cÃ¡c danh má»¥c hÃ nh Ä‘á»™ng váº­n hÃ nh.
+
+\subsection{Nhiá»‡m vá»¥ C: Má»Ÿ rá»™ng bá»‘i cáº£nh sÃ¢u}
+Nhiá»‡m vá»¥ C lÃ  tinh chá»‰nh mÃ¡y biáº¿n Ã¡p dÆ°á»›i dáº¡ng pháº§n má»Ÿ rá»™ng NLP. Pháº§n má»Ÿ rá»™ng nÃ y nháº±m má»¥c Ä‘Ã­ch kiá»ƒm tra mÃ´ hÃ¬nh hÃ³a ngÃ´n ngá»¯ theo ngá»¯ cáº£nh sÃ¢u sáº¯c Ä‘á»‘i vá»›i cÃ¡c cá»¥m tá»« ngáº¯n vÃ  máº«u phá»§ Ä‘á»‹nh khÃ³. NÃ³ cÅ©ng cung cáº¥p sá»± so sÃ¡nh trá»±c tiáº¿p vá»›i cÃ¡c biá»ƒu diá»…n thÆ°a thá»›t cá»• Ä‘iá»ƒn \cite{vaswani2017,devlin2019}.
+
+\section{Äáº·c Ä‘iá»ƒm dá»¯ liá»‡u vÃ  ngÃ´n ngá»¯}
+\subsection{Nguá»“n dá»¯ liá»‡u vÃ  quy mÃ´}
+Tá»‡p nguá»“n chá»©a 152.410 Ä‘Ã¡nh giÃ¡ vá»›i cÃ¡c trÆ°á»ng vÄƒn báº£n vÃ  xáº¿p háº¡ng. Báº£ng \ref{tab:nlp_rating_distribution} hiá»ƒn thá»‹ phÃ¢n bá»• xáº¿p háº¡ng Ä‘áº§y Ä‘á»§.
+
+\begin{table}[H]
+\centering
+\caption{PhÃ¢n phá»‘i xáº¿p háº¡ng trong dá»¯ liá»‡u nguá»“n}
+\label{tab:nlp_rating_distribution}
+\begin{tabular}{lr}
+\toprule
+Rating & Number of reviews \\
+\midrule
+1 & 12,326 \\
+2 & 1,873 \\
+3 & 3,271 \\
+4 & 6,692 \\
+5 & 128,248 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NhÃ£n tÃ¬nh cáº£m máº¡nh máº½ bao gá»“m xáº¿p háº¡ng 1, 2, 4 vÃ  5. Äiá»u nÃ y mang láº¡i 149.139 hÃ ng. Lá»›p phá»§ Ä‘á»‹nh cÃ³ 14.199 hÃ ng vÃ  lá»›p tÃ­ch cá»±c cÃ³ 134.940 hÃ ng. Tá»· lá»‡ lá»›p lÃ  khoáº£ng 9,5 Ä‘áº¿n 1. Sá»± máº¥t cÃ¢n báº±ng nÃ y ráº¥t quan trá»ng Ä‘á»‘i vá»›i cÃ¡c lá»±a chá»n láº­p mÃ´ hÃ¬nh NLP vÃ  Ä‘Ã¡nh giÃ¡ táº­p trung vÃ o thu há»“i chÃ­nh xÃ¡c \cite{saito2015}.
+
+\subsection{Tiáº¿ng á»“n ngÃ´n ngá»¯ Ä‘Æ°á»£c quan sÃ¡t}
+NgÃ´n ngá»¯ Ä‘Ã¡nh giÃ¡ chá»©a cÃ¡c dáº¡ng nhiá»…u NLP phá»• biáº¿n. Táº­p dá»¯ liá»‡u bao gá»“m cÃ¡c dáº¡ng ngáº¯n nhÆ° gr8, thx, idk vÃ  cÃ¡c cá»¥m tá»« khÃ´ng chÃ­nh thá»©c. NÃ³ bao gá»“m nhiá»u thÃ¡i cá»±c khÃ¡c nhau trong má»™t cÃ¢u, cháº³ng háº¡n nhÆ° giao hÃ ng tá»‘t nhÆ°ng trá»…. NÃ³ bao gá»“m cÃ¡c cá»¥m tá»« phá»§ Ä‘á»‹nh rÃµ rÃ ng nhÆ° khÃ´ng tá»‡ vÃ  khÃ´ng tá»‘t.
+
+Táº­p dá»¯ liá»‡u cÅ©ng cÃ³ cÃ¡c tá»« dÃ nh riÃªng cho tÃªn miá»n dÃ nh cho tháº» quÃ  táº·ng, Ä‘á»•i mÃ£, kÃ­ch hoáº¡t, giao hÃ ng, há»— trá»£ vÃ  hoÃ n tiá»n. Nhá»¯ng mÃ´ hÃ¬nh nÃ y thÃºc Ä‘áº©y cáº£ viá»‡c láº­p báº£n Ä‘á»“ tá»« vá»±ng vÃ  há»c táº­p dá»±a trÃªn dá»¯ liá»‡u.
+
+\subsection{Dá»¯ liá»‡u nhÃ£n váº¥n Ä‘á»}
+Äá»ƒ trÃ­ch xuáº¥t váº¥n Ä‘á», táº­p dá»¯ liá»‡u Ä‘Æ°á»£c gáº¯n nhÃ£n thá»§ cÃ´ng cÃ³ 19.000 hÃ ng. Báº£ng \ref{tab:nlp_issue_frequency} hiá»ƒn thá»‹ táº§n suáº¥t nhÃ£n.
+
+\begin{table}[H]
+\centering
+\caption{Táº§n suáº¥t nhÃ£n phÃ¡t hÃ nh trong bá»™ chÃº thÃ­ch NLP thá»§ cÃ´ng}
+\label{tab:nlp_issue_frequency}
+\begin{tabular}{lrr}
+\toprule
+Label & Count & Share \\
+\midrule
+delivery\_shipping & 972 & 0.0512 \\
+redemption\_activation & 284 & 0.0149 \\
+product\_quality & 1,251 & 0.0658 \\
+customer\_service & 182 & 0.0096 \\
+refund\_return & 93 & 0.0049 \\
+usability & 873 & 0.0459 \\
+value\_price & 558 & 0.0294 \\
+fraud\_scam & 144 & 0.0076 \\
+other & 15,960 & 0.8400 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NhÃ£n trung bÃ¬nh cho má»—i bÃ i Ä‘Ã¡nh giÃ¡ lÃ  1,069. Äiá»u nÃ y há»— trá»£ láº­p mÃ´ hÃ¬nh nhiá»u nhÃ£n vÃ¬ nhiá»u hÃ ng khÃ´ng pháº£i lÃ  vÄƒn báº£n má»™t khÃ¡i niá»‡m.
+
+\section{Thiáº¿t káº¿ xá»­ lÃ½ vÄƒn báº£n}
+\subsection{Chuáº©n hÃ³a}
+Quy trÃ¬nh chuáº©n hÃ³a cá»‘t lÃµi sá»­ dá»¥ng chuyá»ƒn Ä‘á»•i chá»¯ thÆ°á»ng, xÃ³a URL, dá»n dáº¹p dáº¥u cÃ¢u vÃ  chuáº©n hÃ³a khoáº£ng tráº¯ng. Äiá»u nÃ y lÃ m giáº£m sá»± thÆ°a thá»›t cá»§a mÃ£ thÃ´ng bÃ¡o trong khi váº«n giá»¯ Ä‘Æ°á»£c cÃ¡c tá»« cáº£m xÃºc cá»‘t lÃµi.
+
+Chuáº©n hÃ³a chá»¯ viáº¿t táº¯t tÃ¹y chá»n Ã¡nh xáº¡ cÃ¡c dáº¡ng ngáº¯n phá»• biáº¿n thÃ nh dáº¡ng Ä‘áº§y Ä‘á»§. Äiá»u nÃ y bao gá»“m cÃ¡c Ã¡nh xáº¡ nhÆ° gr8 thÃ nh tuyá»‡t vá»i, thx thÃ nh cáº£m Æ¡n, u tá»›i báº¡n vÃ  idk tá»›i tÃ´i khÃ´ng biáº¿t.
+
+\subsection{Xá»­ lÃ½ phá»§ Ä‘á»‹nh}
+Phá»§ Ä‘á»‹nh lÃ  má»™t thÃ¡ch thá»©c quan trá»ng cá»§a NLP trong cÃ¡c bÃ i Ä‘Ã¡nh giÃ¡ ngáº¯n. Dá»± Ã¡n sá»­ dá»¥ng phÆ°Æ¡ng phÃ¡p gáº¯n tháº» phá»§ Ä‘á»‹nh. Sau tÃ­n hiá»‡u phá»§ Ä‘á»‹nh, má»™t sá»‘ mÃ£ thÃ´ng bÃ¡o tiáº¿p theo sáº½ nháº­n Ä‘Æ°á»£c tiá»n tá»‘ NOT\_. KÃ­ch thÆ°á»›c cá»­a sá»• theo máº·c Ä‘á»‹nh lÃ  ba mÃ£ thÃ´ng bÃ¡o \cite{wiegand2010}.
+
+PhÆ°Æ¡ng phÃ¡p nÃ y nháº¹ vá» máº·t tÃ­nh toÃ¡n vÃ  hiá»‡u quáº£ Ä‘á»‘i vá»›i cÃ¡c mÃ´ hÃ¬nh thÆ°a thá»›t. NÃ³ giÃºp tÃ¡ch biá»‡t tá»‘t khá»i NOT\_good vÃ  xáº¥u khá»i NOT\_bad trong khÃ´ng gian tÃ­nh nÄƒng.
+
+\subsection{Xá»­ lÃ½ Ä‘á»™ tÆ°Æ¡ng pháº£n}
+ÄÆ°á»ng dáº«n cÅ©ng mÃ´ hÃ¬nh hÃ³a Ä‘á»™ tÆ°Æ¡ng pháº£n diá»…n ngÃ´n Ä‘Æ¡n giáº£n. Khi cÃ¡c dáº¥u hiá»‡u nhÆ° but, tuy nhiÃªn, máº·c dÃ¹, tuy nhiÃªn, vÃ  chÆ°a xuáº¥t hiá»‡n, vÄƒn báº£n cÃ³ thá»ƒ Ä‘Æ°á»£c chia thÃ nh cÃ¡c má»‡nh Ä‘á» trÃ¡i vÃ  pháº£i. Sau Ä‘Ã³, cÃ¡c tÃ­nh nÄƒng má»‡nh Ä‘á» riÃªng biá»‡t vÃ  cá» Ä‘Ã¡nh dáº¥u sáº½ Ä‘Æ°á»£c thÃªm vÃ o.
+
+Thiáº¿t káº¿ nÃ y náº¯m báº¯t má»™t máº«u Ä‘Ã¡nh giÃ¡ chung trong Ä‘Ã³ má»‡nh Ä‘á» thá»© hai mang Ã½ kiáº¿n cuá»‘i cÃ¹ng cá»§a ngÆ°á»i dÃ¹ng.
+
+\subsection{MÃ´ hÃ¬nh cáº¥p Ä‘á»™ kÃ½ tá»±}
+CÃ¡c Ä‘áº·c Ä‘iá»ƒm kÃ½ tá»± tá»« 3 Ä‘áº¿n 5 gam Ä‘Æ°á»£c sá»­ dá»¥ng lÃ m sá»± káº¿t há»£p tÃ¹y chá»n vá»›i cÃ¡c Ä‘áº·c Ä‘iá»ƒm cá»§a tá»«. Äiá»u nÃ y giÃºp kháº¯c phá»¥c lá»—i Ä‘Ã¡nh mÃ¡y, tiáº¿ng lÃ³ng ngáº¯n vÃ  cÃ¡c biáº¿n thá»ƒ chÃ­nh táº£ nhá». Trong cÃ¡c tÃ¡c vá»¥ NLP trÃªn vÄƒn báº£n cá»§a ngÆ°á»i dÃ¹ng, Ä‘iá»u nÃ y thÆ°á»ng cáº£i thiá»‡n Ä‘á»™ máº¡nh máº½ \cite{joulin2017}.
+
+\section{Ká»¹ thuáº­t tÃ­nh nÄƒng cho NLP}
+\subsection{Biá»ƒu diá»…n thÆ°a thá»›t cá»• Ä‘iá»ƒn}
+Biá»ƒu diá»…n chÃ­nh lÃ  TF-IDF vá»›i tá»« n-gram. ÄÆ°á»ng cÆ¡ sá»Ÿ sá»­ dá»¥ng 1 Ä‘áº¿n 2 gam. CÃ¡c biáº¿n thá»ƒ khÃ¡c kiá»ƒm tra tá»« 1 Ä‘áº¿n 3 gam, tháº» phá»§ Ä‘á»‹nh, má»‡nh Ä‘á» tÆ°Æ¡ng pháº£n, gam kÃ½ tá»± vÃ  Ä‘áº·c Ä‘iá»ƒm tá»« vá»±ng \cite{manning2008ir,wang2012}.
+
+Báº£ng \ref{tab:nlp_variant_design} tÃ³m táº¯t cÃ¡c biáº¿n thá»ƒ ngá»¯ cáº£nh Ä‘Æ°á»£c thá»­ nghiá»‡m.
+
+\begin{table}[H]
+\centering
+\caption{CÃ¡c biáº¿n thá»ƒ cá»§a tÃ­nh nÄƒng ngá»¯ cáº£nh NLP}
+\label{tab:nlp_variant_design}
+\begin{tabular}{>{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{12cm}}
+\toprule
+Biáº¿n thá»ƒ & Thiáº¿t káº¿ Ä‘áº·c trÆ°ng \\
+\midrule
+V0 & Baseline word TF-IDF with n-gram range 1 to 2 \\
+V1 & Word TF-IDF with n-gram range 1 to 3 \\
+V2 & Word 1 to 2 plus negation tagging \\
+V3 & Word 1 to 2 plus clause split with contrast marker \\
+V4 & Word 1 to 2 plus negation tagging plus clause split \\
+V5 & Word 1 to 2 plus character 3 to 5 grams \\
+V6 & Word 1 to 2 plus character 3 to 5 grams plus negation tagging \\
+V7 & Word 1 to 2 plus negation tagging plus sentiment lexicon block \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Khá»‘i Ä‘áº·c trÆ°ng tá»« vá»±ng}
+Dá»± Ã¡n bao gá»“m khá»‘i tá»« vá»±ng cáº£m tÃ­nh dá»±a trÃªn AFINN trong má»™t biáº¿n thá»ƒ. NÃ³ tÃ­nh Ä‘iá»ƒm thÃ´, Ä‘iá»ƒm nháº­n biáº¿t phá»§ Ä‘á»‹nh, Ä‘iá»ƒm nháº­n biáº¿t cÆ°á»ng Ä‘á»™ vÃ  Ä‘iá»ƒm cÃ³ trá»ng sá»‘ tÆ°Æ¡ng pháº£n. Äiá»u nÃ y bá»• sung thÃªm tá»« vá»±ng rÃµ rÃ ng trÆ°á»›c biá»ƒu diá»…n thÆ°a thá»›t \cite{nielsen2011}.
+
+Pháº§n nÃ y há»¯u Ã­ch cho viá»‡c há»c khÃ³a há»c NLP vÃ¬ nÃ³ káº¿t ná»‘i cÃ¡c phÆ°Æ¡ng phÃ¡p tá»« vá»±ng cá»• Ä‘iá»ƒn vá»›i viá»‡c há»c cÃ³ giÃ¡m sÃ¡t hiá»‡n Ä‘áº¡i trong má»™t quy trÃ¬nh.
+
+\section{PhÆ°Æ¡ng phÃ¡p mÃ´ hÃ¬nh hÃ³a}
+\subsection{Bá»™ phÃ¢n loáº¡i tÃ¬nh cáº£m}
+CÃ´ng cá»¥ phÃ¢n loáº¡i tÃ¬nh cáº£m chÃ­nh lÃ  Há»“i quy logistic. Lá»±a chá»n tÃ­nh nÄƒng Chi bÃ¬nh phÆ°Æ¡ng Ä‘Æ°á»£c Ã¡p dá»¥ng vá»›i cÃ¡c giÃ¡ trá»‹ K cao nháº¥t tá»« 1.000 Ä‘áº¿n 10.000. CÃ i Ä‘áº·t trá»ng lÆ°á»£ng lá»›p khÃ´ng bao gá»“m cÃ¡c biáº¿n thá»ƒ khÃ´ng cÃ³, cÃ¢n báº±ng vÃ  cÃ³ trá»ng sá»‘ \cite{forman2003}.
+
+CÃ¡c mÃ´ hÃ¬nh cáº£m tÃ­nh bá»• sung bao gá»“m Há»“i quy logistic L1 cho hÃ nh vi nhÃºng thÆ°a thá»›t, CÃ¢y quyáº¿t Ä‘á»‹nh vÃ  Rá»«ng ngáº«u nhiÃªn.
+
+\subsection{MÃ´ hÃ¬nh trÃ­ch xuáº¥t váº¥n Ä‘á»}
+TrÃ­ch xuáº¥t váº¥n Ä‘á» sá»­ dá»¥ng Ä‘Ã o táº¡o má»™t so vá»›i pháº§n cÃ²n láº¡i trÃªn chÃ­n nhÃ£n. MÃ´ hÃ¬nh máº·c Ä‘á»‹nh lÃ  Há»“i quy logistic vá»›i trá»ng sá»‘ lá»›p cÃ¢n báº±ng. ÄÆ°á»ng cÆ¡ sá»Ÿ LinearSVM cÅ©ng cÃ³ sáºµn \cite{rifkin2004}.
+
+Viá»‡c Ä‘iá»u chá»‰nh ngÆ°á»¡ng Ä‘Æ°á»£c thá»±c hiá»‡n trÃªn má»—i nhÃ£n trÃªn dá»¯ liá»‡u xÃ¡c thá»±c. Äiá»u nÃ y ráº¥t quan trá»ng trong NLP nhiá»u nhÃ£n vÃ¬ má»™t ngÆ°á»¡ng chung thÆ°á»ng khÃ´ng Ä‘á»§ cho táº¥t cáº£ cÃ¡c nhÃ£n.
+
+\subsection{MÃ¡y biáº¿n Ã¡p má»Ÿ rá»™ng}
+Pháº§n má»Ÿ rá»™ng mÃ¡y biáº¿n Ã¡p tinh chá»‰nh bá»™ phÃ¢n loáº¡i trÃ¬nh tá»± vá»›i tá»•n tháº¥t theo trá»ng sá»‘ lá»›p. NÃ³ sá»­ dá»¥ng vÄƒn báº£n rÃµ rÃ ng vÃ  Ä‘Ã¡nh giÃ¡ vá»›i cÃ¹ng má»™t khung ngÆ°á»¡ng vÃ  Ä‘á»™ khÃ´ng cháº¯c cháº¯n Ä‘á»ƒ so sÃ¡nh trá»±c tiáº¿p \cite{devlin2019}.
+
+Tiá»‡n Ã­ch má»Ÿ rá»™ng nÃ y cung cáº¥p ngá»¯ nghÄ©a theo ngá»¯ cáº£nh sÃ¢u hÆ¡n vÃ  giÃºp phÃ¢n tÃ­ch cÃ¡c cá»¥m tá»« ngáº¯n khÃ³ hiá»ƒu trong Ä‘Ã³ cÃ¡c mÃ´ hÃ¬nh thÆ°a thá»›t cÃ³ thá»ƒ tháº¥t báº¡i.
+
+\section{Thiáº¿t láº­p thá»­ nghiá»‡m}
+\subsection{PhÃ¢n chia vÃ  giao thá»©c}
+Táº¥t cáº£ cÃ¡c thá»­ nghiá»‡m Ä‘á»u sá»­ dá»¥ng háº¡t giá»‘ng 42. CÃ¡c nhÃ£n tÃ¬nh cáº£m máº¡nh máº½ Ä‘Æ°á»£c phÃ¢n chia theo tá»· lá»‡ Ä‘Ã o táº¡o, xÃ¡c thá»±c vÃ  kiá»ƒm tra 70, 10 vÃ  20. ÄÃ¡nh giÃ¡ ba sao Ä‘Æ°á»£c giá»¯ Ä‘á»ƒ phÃ¢n tÃ­ch Ä‘á»™ khÃ´ng cháº¯c cháº¯n.
+
+Viá»‡c trÃ­ch xuáº¥t váº¥n Ä‘á» sá»­ dá»¥ng 19.000 hÃ ng Ä‘Æ°á»£c gáº¯n nhÃ£n vá»›i kÃ­ch thÆ°á»›c phÃ¢n chia lÃ  13.300 cho táº­p huáº¥n, 1.900 cho xÃ¡c thá»±c vÃ  3.800 cho kiá»ƒm tra trong cÃ¡c láº§n cháº¡y Ä‘Ã£ lÆ°u.
+
+\subsection{Sá»‘ liá»‡u chÃ­nh}
+Äá»‘i vá»›i cáº£m tÃ­nh, cÃ¡c chá»‰ sá»‘ chÃ­nh lÃ  Ä‘á»™ chÃ­nh xÃ¡c\_0, má»©c thu há»“i\_0, F1\_0 vÃ  F2\_0, cÃ¹ng vá»›i Ä‘á»™ chÃ­nh xÃ¡c Ä‘áº§y Ä‘á»§ vÃ  F1. Do bá»™ nhÃ£n máº¡nh bá»‹ máº¥t cÃ¢n báº±ng nÃªn sá»± Ä‘Ã¡nh Ä‘á»•i mÃ´ hÃ¬nh Ä‘Æ°á»£c diá»…n giáº£i chá»§ yáº¿u thÃ´ng qua hÃ nh vi thu há»“i chÃ­nh xÃ¡c thay vÃ¬ cÃ¡c cháº¿ Ä‘á»™ xem chá»‰ ROC \cite{saito2015}. CÃ¡c sá»‘ liá»‡u chá»n lá»c trong Ä‘iá»u kiá»‡n khÃ´ng cháº¯c cháº¯n bao gá»“m pháº¡m vi bao phá»§, tá»· lá»‡ khÃ´ng cháº¯c cháº¯n, Ä‘á»™ chÃ­nh xÃ¡c cÃ³ chá»n lá»c\_0, thu há»“i cÃ³ chá»n lá»c\_0, F2\_0 chá»n lá»c vÃ  tá»· lá»‡ Ã¢m tÃ­nh giáº£ trÃªn cÃ¡c máº«u Ä‘Æ°á»£c bao phá»§.
+
+Äá»ƒ trÃ­ch xuáº¥t váº¥n Ä‘á», cÃ¡c sá»‘ liá»‡u chÃ­nh lÃ  micro-F1, macro-F1, Ä‘á»™ chÃ­nh xÃ¡c cá»§a táº­p há»£p con, tá»•n tháº¥t hamming vÃ  Ä‘á»™ chÃ­nh xÃ¡c trÃªn má»—i nhÃ£n, thu há»“i vÃ  F1.
+
+\subsection{Quy táº¯c báº¥t Ä‘á»‹nh}
+ChÃ­nh sÃ¡ch khÃ´ng cháº¯c cháº¯n sá»­ dá»¥ng ngÆ°á»¡ng tháº¥p vÃ  ngÆ°á»¡ng cao Ä‘á»‘i vá»›i xÃ¡c suáº¥t dÆ°Æ¡ng. NÃ³ tuÃ¢n theo thiáº¿t láº­p bá» qua phÃ¢n loáº¡i cÃ³ chá»n lá»c vÃ  cÃ³ thá»ƒ tráº£ vá» má»©c Ä‘á»™ khÃ´ng cháº¯c cháº¯n á»Ÿ pháº¡m vi trung bÃ¬nh \cite{geifman2017}. ChÃºng tÃ´i Ã¡p dá»¥ng phÆ°Æ¡ng phÃ¡p phá»ng Ä‘oÃ¡n bá»• sung trong quy trÃ¬nh cá»• Ä‘iá»ƒn Ä‘á»ƒ tráº£ vá» káº¿t quáº£ khÃ´ng cháº¯c cháº¯n Ä‘á»‘i vá»›i cÃ¡c trÆ°á»ng há»£p vÄƒn báº£n quÃ¡ ngáº¯n hoáº·c thÆ°a thá»›t.
+
+ChÃ­nh sÃ¡ch nÃ y cáº£i thiá»‡n Ä‘á»™ tin cáº­y triá»ƒn khai vÃ¬ vÄƒn báº£n cÃ³ Ã­t thÃ´ng tin khÃ´ng bá»‹ buá»™c pháº£i Ä‘Æ°a ra quyáº¿t Ä‘á»‹nh khÃ³ khÄƒn.
+
+\section{Quy trÃ¬nh lÃ m viá»‡c nhÃ³m vÃ  Ä‘áº£m báº£o cháº¥t lÆ°á»£ng}
+\subsection{PhÃ¢n rÃ£ mÃ´-Ä‘un vÃ  trÃ¡ch nhiá»‡m}
+Äá»ƒ duy trÃ¬ kháº£ nÄƒng má»Ÿ rá»™ng cho má»™t nhÃ³m gá»“m báº£y thÃ nh viÃªn, viá»‡c triá»ƒn khai Ä‘Æ°á»£c phÃ¢n chia thÃ nh cÃ¡c mÃ´-Ä‘un ká»¹ thuáº­t vá»›i cÃ¡c yÃªu cáº§u vá» quyá»n sá»Ÿ há»¯u vÃ  kiá»ƒm tra chÃ©o rÃµ rÃ ng. Báº£ng \ref{tab:nlp_team_modules} tÃ³m táº¯t cáº¥u trÃºc Ä‘Æ°á»£c sá»­ dá»¥ng trong quÃ¡ trÃ¬nh phÃ¡t triá»ƒn vÃ  chuáº©n bá»‹ trÃ¬nh bÃ y cuá»‘i cÃ¹ng.
+
+\begin{table}[H]
+\centering
+\caption{PhÃ¢n chia mÃ´-Ä‘un nhÃ³m vÃ  chá»‹u trÃ¡ch nhiá»‡m vá» cháº¥t lÆ°á»£ng}
+\label{tab:nlp_team_modules}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{4.8cm} >{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{2.6cm}}
+\toprule
+Module & Main responsibility & Cross-check by non-owner & Main artifact path \\
+\midrule
+Sentiment core & cleaning, TF-IDF features, Chi-square, logistic and uncertainty policy & rerun from raw JSONL and verify metric consistency & \texttt{results/dm2\_steps/} \\
+Issue extraction & annotation schema validation, natural ID template generation, OVR training, per-label thresholds & verify deterministic template order and per-label F1 deltas after regeneration & \texttt{results/issue\_steps/} \\
+Transformer extension & fine-tuning, threshold sweep, hard-case comparison & compare against classic under the same evaluation protocol & \texttt{results/nlp\_ext/} \\
+Reporting and demonstration & report writing, figure integration, demonstration rehearsal & final end-to-end rerun and Q\&A preparation & \texttt{results/reports/} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Hiá»ƒu biáº¿t chÃ©o, Ä‘Ã¡nh giÃ¡ vÃ  tÃ¡i táº¡o}
+Quy trÃ¬nh cÃ´ng viá»‡c Ä‘Æ°á»£c thiáº¿t káº¿ sao cho má»—i mÃ´-Ä‘un quan trá»ng cÃ³ thá»ƒ Ä‘Æ°á»£c thá»±c thi bá»Ÿi Ã­t nháº¥t má»™t thÃ nh viÃªn khÃ´ng pháº£i lÃ  tÃ¡c giáº£ gá»‘c. Äá»‘i vá»›i má»—i láº§n chuyá»ƒn giao mÃ´-Ä‘un, thÃ nh viÃªn nháº­n sáº½ cháº¡y láº¡i quy trÃ¬nh tá»« cÃ¡c lá»‡nh Ä‘Ã£ lÆ°u vÃ  kiá»ƒm tra ba cá»•ng: khÃ´ng cÃ³ rÃ² rá»‰ kiá»ƒm tra huáº¥n luyá»‡n, hÃ nh vi háº¡t giá»‘ng ngáº«u nhiÃªn cá»‘ Ä‘á»‹nh vÃ  tÃ­nh nháº¥t quÃ¡n giá»¯a cÃ¡c giÃ¡ trá»‹ báº£ng vÃ  tá»‡p CSV Ä‘Ã£ xuáº¥t.
+
+Äá»ƒ kiá»ƒm soÃ¡t cháº¥t lÆ°á»£ng mÃ£, chÃºng tÃ´i sá»­ dá»¥ng chÃ­nh sÃ¡ch phÃ¢n nhÃ¡nh vÃ  Ä‘Ã¡nh giÃ¡ vá»›i má»™t Ä‘Ã¡nh giÃ¡ khÃ´ng pháº£i cá»§a tÃ¡c giáº£ cho má»—i thay Ä‘á»•i Ä‘Ã¡ng ká»ƒ. Danh sÃ¡ch kiá»ƒm tra Ä‘Ã¡nh giÃ¡ táº­p trung vÃ o Ä‘á»™ chÃ­nh xÃ¡c cá»§a sá»‘ liá»‡u, tÃ­nh toÃ n váº¹n phÃ¢n tÃ¡ch vÃ  kháº£ nÄƒng tÃ¡i táº¡o. QuÃ¡ trÃ¬nh nÃ y phÃ¹ há»£p vá»›i cÃ¡c yÃªu cáº§u cá»§a khÃ³a há»c vá» phÃ¢n chia mÃ´-Ä‘un, chia sáº» hiá»ƒu biáº¿t vÃ  thá»±c hÃ nh Ä‘Ã¡nh giÃ¡ chÃ©o. Báº£n cáº­p nháº­t má»›i nháº¥t á»Ÿ mÃ´-Ä‘un issue cÅ©ng bá»• sung cÆ¡ cháº¿ sáº¯p xáº¿p ID tá»± nhiÃªn cho template gÃ¡n nhÃ£n vÃ  khÃ³a hÃ nh vi nÃ y báº±ng test há»“i quy chuyÃªn biá»‡t.
+
+\subsection{GÃ³i tÃ i liá»‡u báº±ng chá»©ng}
+Äá»ƒ lÃ m cho báº±ng chá»©ng lÃ m viá»‡c nhÃ³m cÃ³ thá»ƒ Ä‘Æ°á»£c kiá»ƒm tra trong báº£n trÃ¬nh bÃ y cuá»‘i cÃ¹ng, gÃ³i báº±ng chá»©ng bao gá»“m: ma tráº­n vai trÃ²/mÃ´-Ä‘un, nháº­t kÃ½ lá»‡nh Ä‘á»ƒ cháº¡y láº¡i, táº¡o pháº©m CSV Ä‘áº§u ra cá»§a mÃ´ hÃ¬nh vÃ  ghi chÃº Ä‘Ã¡nh giÃ¡ Ä‘Æ°á»£c liÃªn káº¿t vá»›i cÃ¡c mÃ´-Ä‘un Ä‘Ã£ thay Ä‘á»•i. TÃ i liá»‡u nÃ y bá»• sung cho cÃ¡c káº¿t quáº£ mÃ´ hÃ¬nh Ä‘á»‹nh lÆ°á»£ng vÃ  chá»©ng minh cháº¥t lÆ°á»£ng quy trÃ¬nh bÃªn cáº¡nh Ä‘iá»ƒm sá»‘ cuá»‘i cÃ¹ng.
+
+\section{GÃ³i nÃ¢ng cáº¥p giÃ¡o trÃ¬nh khÃ´ng cÃ³ dá»¯ liá»‡u má»›i}
+Dá»± Ã¡n hiá»‡n bao gá»“m má»™t gÃ³i bá»• sung giÃºp cáº£i thiá»‡n sá»± liÃªn káº¿t vá»›i cÃ¡c chá»§ Ä‘á» khÃ³a há»c NLP mÃ  khÃ´ng cáº§n thÃªm báº¥t ká»³ dá»¯ liá»‡u Ä‘Æ°á»£c gáº¯n nhÃ£n má»›i nÃ o. GÃ³i nÃ y sá»­ dá»¥ng láº¡i cÃ¹ng má»™t chuá»—i phÃ¢n tÃ¡ch, xÃ¡c thá»±c vÃ  kiá»ƒm tra, Ä‘á»“ng thá»i giá»¯ nguyÃªn chÃ­nh sÃ¡ch dá»n dáº¹p vÄƒn báº£n.
+
+Khá»‘i nÃ¢ng cáº¥p Ä‘áº§u tiÃªn lÃ  bá»™ Ä‘iá»ƒm chuáº©n cá»• Ä‘iá»ƒn toÃ n diá»‡n. NÃ³ bao gá»“m Há»“i quy logistic, Bayes Naive Ä‘a thá»©c, Bayes Naive bá»• sung, Perceptron, LinearSVM, SGD vá»›i tÃ­nh nÄƒng máº¥t log, Há»“i quy logistic ngá»¯ nghÄ©a trÃªn vectÆ¡ SVD vÃ  MLP chuyá»ƒn tiáº¿p nguá»“n cáº¥p dá»¯ liá»‡u trÃªn cÃ¹ng vectÆ¡ SVD. KÃ­ch thÆ°á»›c Ä‘Ã o táº¡o Ä‘Æ°á»£c giá»›i háº¡n á»Ÿ 60.000 hÃ ng trong khá»‘i nÃ y Ä‘á»ƒ kiá»ƒm soÃ¡t thá»i gian cháº¡y trong khi váº«n duy trÃ¬ tá»· lá»‡ lá»›p.
+
+Khá»‘i nÃ¢ng cáº¥p thá»© hai lÃ  khá»‘i mÃ´ hÃ¬nh ngÃ´n ngá»¯. NÃ³ Ä‘Ã o táº¡o cÃ¡c mÃ´ hÃ¬nh ngÃ´n ngá»¯ unigram vÃ  bigram vá»›i kháº£ nÄƒng lÃ m má»‹n add-k vÃ  bÃ¡o cÃ¡o sá»± phá»©c táº¡p trong quÃ¡ trÃ¬nh phÃ¢n tÃ¡ch xÃ¡c thá»±c vÃ  kiá»ƒm tra. Äiá»u nÃ y cung cáº¥p báº±ng chá»©ng trá»±c tiáº¿p cho chá»§ Ä‘á» mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram trong khÃ³a há»c \cite{jurafsky2026,manning2008ir}.
+
+Khá»‘i nÃ¢ng cáº¥p thá»© ba bá»• sung thÃªm cÃ¡c táº¡o pháº©m theo trÃ¬nh tá»± vÃ  mÃ´ hÃ¬nh ngÃ´n ngá»¯ hiá»‡n Ä‘áº¡i, bao gá»“m Ä‘Æ°á»ng cÆ¡ sá»Ÿ cáº£m tÃ­nh RNN/LSTM, bÃ¡o cÃ¡o thÄƒm dÃ² MLM vÃ  Ä‘Æ°á»ng cÆ¡ sá»Ÿ ngá»¯ nghÄ©a kiá»ƒu lá»i nháº¯c LLM trÃªn cÃ¹ng má»™t phÃ¢n chia cáº£m tÃ­nh.
+
+Khá»‘i cuá»‘i cÃ¹ng xÃ¢y dá»±ng ma tráº­n bao phá»§ chá»§ Ä‘á» tá»« cÃ¡c táº¡o pháº©m cá»§a dá»± Ã¡n. Ma tráº­n sá»­ dá»¥ng Ä‘iá»ƒm sá»‘ chá»§ Ä‘á» rÃµ rÃ ng vÃ  bÃ¡o cÃ¡o Ä‘iá»ƒm tá»•ng thá»ƒ vá» ná»™i dung giÃ¡o trÃ¬nh Ä‘á»ƒ tháº£o luáº­n bÃ o chá»¯a.
+
+\section{Káº¿t quáº£ cho MÃ´ hÃ¬nh tÃ¬nh cáº£m NLP cá»• Ä‘iá»ƒn}
+\subsection{Lá»±a chá»n Ä‘Æ°á»ng cÆ¡ sá»Ÿ bá»Ÿi K}
+QuÃ©t Ä‘Æ°á»ng cÆ¡ sá»Ÿ trÃªn V0 hiá»ƒn thá»‹ cÃ i Ä‘áº·t tá»‘t nháº¥t cho má»—i K theo quy táº¯c phá»§ Ä‘á»‹nh Ä‘áº§u tiÃªn. Báº£ng \ref{tab:nlp_chi2_best_per_k} bÃ¡o cÃ¡o cÃ¡c hÃ ng Ä‘Ã£ chá»n tá»« quÃ¡ trÃ¬nh xÃ¡c thá»±c.
+
+\begin{table}[H]
+\centering
+\caption{Káº¿t quáº£ tÃ¬nh cáº£m cÆ¡ báº£n tá»‘t nháº¥t trÃªn má»—i K khi xÃ¡c thá»±c}
+\label{tab:nlp_chi2_best_per_k}
+\begin{tabular}{lcccccc}
+\toprule
+K & Trá»ng sá»‘ lá»›p & Precision\_0 & Recall\_0 & F2\_0 & Accuracy & F1 \\
+\midrule
+1,000 & w10 & 0.555 & 0.910 & 0.806 & 0.922 & 0.955 \\
+2,000 & w10 & 0.584 & 0.920 & 0.825 & 0.930 & 0.960 \\
+5,000 & balanced & 0.606 & 0.935 & 0.843 & 0.936 & 0.963 \\
+10,000 & balanced & 0.621 & 0.936 & 0.850 & 0.940 & 0.966 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{So sÃ¡nh biáº¿n thá»ƒ}
+Sau khi quÃ©t toÃ n bá»™ biáº¿n thá»ƒ, cÃ i Ä‘áº·t cá»• Ä‘iá»ƒn Ä‘Æ°á»£c chá»n lÃ  V6 vá»›i K báº±ng 10.000 vÃ  trá»ng lÆ°á»£ng háº¡ng w10. Báº£ng \ref{tab:nlp_variant_test} hiá»ƒn thá»‹ so sÃ¡nh thá»­ nghiá»‡m giá»¯a cÃ¡c biáº¿n thá»ƒ.
+
+\begin{table}[H]
+\centering
+\caption{CÃ¡c biáº¿n thá»ƒ tÃ¬nh cáº£m NLP cá»• Ä‘iá»ƒn trÃªn dá»¯ liá»‡u thá»­ nghiá»‡m}
+\label{tab:nlp_variant_test}
+\begin{tabular}{lcccccc}
+\toprule
+Biáº¿n thá»ƒ & K & Trá»ng sá»‘ & Precision\_0 & Recall\_0 & F2\_0 & Coverage \\
+\midrule
+V0 & 10,000 & balanced & 0.638 & 0.937 & 0.856 & 0.870 \\
+V1 & 10,000 & balanced & 0.643 & 0.932 & 0.855 & 0.871 \\
+V2 & 5,000 & w10 & 0.647 & 0.926 & 0.852 & 0.874 \\
+V3 & 10,000 & balanced & 0.626 & 0.923 & 0.843 & 0.868 \\
+V4 & 10,000 & balanced & 0.635 & 0.921 & 0.845 & 0.872 \\
+V5 & 10,000 & balanced & 0.653 & 0.933 & 0.859 & 0.878 \\
+V6 & 10,000 & w10 & 0.677 & 0.932 & 0.867 & 0.885 \\
+V7 & 5,000 & w10 & 0.657 & 0.927 & 0.857 & 0.880 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+V6 mang láº¡i sá»± cÃ¢n báº±ng thuáº­n lá»£i cho má»¥c tiÃªu cá»§a dá»± Ã¡n. NÃ³ duy trÃ¬ kháº£ nÄƒng thu há»“i Ã¢m báº£n cao Ä‘á»“ng thá»i cáº£i thiá»‡n Ä‘á»™ chÃ­nh xÃ¡c Ã¢m tÃ­nh so vá»›i háº§u háº¿t cÃ¡c biáº¿n thá»ƒ thay tháº¿.
+
+\subsection{NgÆ°á»¡ng vÃ  hÃ nh vi khÃ´ng cháº¯c cháº¯n}
+Äá»‘i vá»›i máº«u cá»• Ä‘iá»ƒn V6 Ä‘Ã£ chá»n, ngÆ°á»¡ng máº·c Ä‘á»‹nh 0,40 vÃ  0,60 mang láº¡i pháº¡m vi bao phá»§ 0,885 vÃ  thu há»“i cÃ³ chá»n lá»c\_0 0,956. Báº£ng \ref{tab:nlp_classic_threshold} hiá»ƒn thá»‹ má»©c quÃ©t ngÆ°á»¡ng.
+
+\begin{table}[H]
+\centering
+\caption{QuÃ©t ngÆ°á»¡ng cho mÃ´ hÃ¬nh tÃ¬nh cáº£m NLP cá»• Ä‘iá»ƒn Ä‘Ã£ chá»n}
+\label{tab:nlp_classic_threshold}
+\begin{tabular}{lcccc}
+\toprule
+Cáº·p ngÆ°á»¡ng & Coverage & Selective precision\_0 & Selective recall\_0 & Selective F2\_0 \\
+\midrule
+0.40 / 0.60 & 0.885 & 0.730 & 0.956 & 0.900 \\
+0.45 / 0.60 & 0.891 & 0.708 & 0.956 & 0.894 \\
+0.50 / 0.65 & 0.886 & 0.681 & 0.963 & 0.889 \\
+0.55 / 0.70 & 0.881 & 0.646 & 0.970 & 0.882 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Káº¿t quáº£ cho pháº§n má»Ÿ rá»™ng Transformer NLP}
+\subsection{Sá»‘ liá»‡u mÃ¡y biáº¿n Ã¡p}
+Káº¿t quáº£ tinh chá»‰nh mÃ¡y biáº¿n Ã¡p Ä‘Æ°á»£c lÆ°u trong Ä‘áº§u ra má»Ÿ rá»™ng NLP. Báº£ng \ref{tab:nlp_transformer_metrics} tÃ³m táº¯t cÃ¡c giÃ¡ trá»‹ xÃ¡c thá»±c vÃ  kiá»ƒm tra.
+
+\begin{table}[H]
+\centering
+\caption{Sá»‘ liá»‡u má»Ÿ rá»™ng Transformer NLP}
+\label{tab:nlp_transformer_metrics}
+\begin{tabular}{lcccccc}
+\toprule
+Táº­p dá»¯ liá»‡u & Accuracy & F1 & Precision\_0 & Recall\_0 & Coverage & Selective recall\_0 \\
+\midrule
+Validation & 0.968 & 0.982 & 0.821 & 0.854 & 0.908 & 0.862 \\
+Test & 0.967 & 0.982 & 0.822 & 0.833 & 0.910 & 0.846 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+So vá»›i Ä‘á»™ng cÆ¡ V6 cá»• Ä‘iá»ƒn, mÃ¡y biáº¿n Ã¡p cho Ä‘á»™ chÃ­nh xÃ¡c tá»•ng thá»ƒ cao hÆ¡n vÃ  Ä‘á»™ chÃ­nh xÃ¡c Ã¢m cao hÆ¡n á»Ÿ ngÆ°á»¡ng cÆ¡ sá»Ÿ. Äá»™ng cÆ¡ V6 cá»• Ä‘iá»ƒn váº«n giá»¯ má»©c thu há»“i Ã¢m thÃ´ cao hÆ¡n nhiá»u.
+
+\subsection{QuÃ©t ngÆ°á»¡ng mÃ¡y biáº¿n Ã¡p}
+Báº£ng \ref{tab:nlp_transformer_threshold} hiá»ƒn thá»‹ hÃ nh vi chá»n lá»c cá»§a mÃ¡y biáº¿n Ã¡p khi quÃ©t ngÆ°á»¡ng.
+
+\begin{table}[H]
+\centering
+\caption{QuÃ©t ngÆ°á»¡ng mÃ¡y biáº¿n Ã¡p trÃªn dá»¯ liá»‡u thá»­ nghiá»‡m}
+\label{tab:nlp_transformer_threshold}
+\begin{tabular}{lcccc}
+\toprule
+Cáº·p ngÆ°á»¡ng & Coverage & Selective precision\_0 & Selective recall\_0 & Selective F2\_0 \\
+\midrule
+0.40 / 0.60 & 0.910 & 0.831 & 0.846 & 0.843 \\
+0.45 / 0.60 & 0.911 & 0.827 & 0.847 & 0.843 \\
+0.50 / 0.65 & 0.912 & 0.821 & 0.850 & 0.844 \\
+0.55 / 0.70 & 0.911 & 0.818 & 0.855 & 0.847 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ÄÆ°á»ng cong mÃ¡y biáº¿n Ã¡p á»•n Ä‘á»‹nh, cÃ³ pháº¡m vi bao phá»§ gáº§n 0,91 vÃ  má»©c tÄƒng vá»«a pháº£i trong thu há»“i cÃ³ chá»n lá»c khi cáº·p ngÆ°á»¡ng di chuyá»ƒn Ä‘áº¿n 0,55 vÃ  0,70.
+
+\subsection{So sÃ¡nh trÆ°á»ng há»£p cá»©ng}
+Káº¿t quáº£ trÆ°á»ng há»£p cá»©ng trong Báº£ng \ref{tab:nlp_hard_cases} so sÃ¡nh cÃ¡c quyáº¿t Ä‘á»‹nh vá» Ä‘Æ°á»ng cÆ¡ sá»Ÿ vÃ  mÃ¡y biáº¿n Ã¡p cá»• Ä‘iá»ƒn.
+
+\begin{table}[H]
+\centering
+\caption{So sÃ¡nh trÆ°á»ng há»£p khÃ³ giá»¯a mÃ´ hÃ¬nh tÃ¬nh cáº£m cá»• Ä‘iá»ƒn vÃ  biáº¿n Ä‘á»•i}
+\label{tab:nlp_hard_cases}
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.1cm} >{\centering\arraybackslash}p{2.3cm} >{\centering\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{4.3cm}}
+\toprule
+VÄƒn báº£n & Quyáº¿t Ä‘á»‹nh baseline & Quyáº¿t Ä‘á»‹nh transformer & Nháº­n xÃ©t chÃ­nh \\
+\midrule
+not bad & TiÃªu cá»±c & TÃ­ch cá»±c & Transformer diá»…n giáº£i cá»¥m thÃ nh ngá»¯ theo hÆ°á»›ng tÃ­ch cá»±c \\
+not good & TiÃªu cá»±c & TiÃªu cá»±c & Hai mÃ´ hÃ¬nh cÃ¹ng dá»± Ä‘oÃ¡n theo hÆ°á»›ng tiÃªu cá»±c \\
+good but late delivery & TiÃªu cá»±c & TÃ­ch cá»±c & Transformer Ä‘áº·t trá»ng sá»‘ cao hÆ¡n cho má»‡nh Ä‘á» tÃ­ch cá»±c á»Ÿ Ä‘áº§u cÃ¢u \\
+gr8 & KhÃ´ng cháº¯c cháº¯n & KhÃ´ng cháº¯c cháº¯n & Cáº£ hai mÃ´ hÃ¬nh Ä‘á»u tráº£ vá» khÃ´ng cháº¯c cháº¯n cho vÄƒn báº£n quÃ¡ ngáº¯n \\
+thx & KhÃ´ng cháº¯c cháº¯n & KhÃ´ng cháº¯c cháº¯n & Cáº£ hai mÃ´ hÃ¬nh Ä‘á»u tráº£ vá» khÃ´ng cháº¯c cháº¯n cho vÄƒn báº£n quÃ¡ ngáº¯n \\
+idk & KhÃ´ng cháº¯c cháº¯n & KhÃ´ng cháº¯c cháº¯n & Cáº£ hai mÃ´ hÃ¬nh Ä‘á»u tráº£ vá» khÃ´ng cháº¯c cháº¯n cho vÄƒn báº£n quÃ¡ ngáº¯n \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Sá»± so sÃ¡nh nÃ y chá»‰ ra ráº±ng mÃ´ hÃ¬nh Transformer giáº£i quyáº¿t má»™t sá»‘ máº«u thÃ nh ngá»¯ (vÃ­ dá»¥ \textit{not bad}) hiá»‡u quáº£ hÆ¡n, trong khi Ä‘Ã´i khi láº¡i Ä‘Ã¡nh giÃ¡ quÃ¡ cao cÃ¡c má»‡nh Ä‘á» tÃ­ch cá»±c trong nhá»¯ng lá»i phÃ n nÃ n cÃ³ nhiá»u phÃ¢n cá»±c.
+
+\section{Káº¿t quáº£ trÃ­ch xuáº¥t váº¥n Ä‘á» NLP}
+\subsection{Káº¿t quáº£ Ä‘a nhÃ£n tá»•ng thá»ƒ}
+Báº£ng \ref{tab:nlp_issue_overall} so sÃ¡nh hai thiáº¿t láº­p trÃ­ch xuáº¥t váº¥n Ä‘á» cÃ³ thá»ƒ tÃ¡i táº¡o trong kho lÆ°u trá»¯ hiá»‡n táº¡i.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Sá»‘ liá»‡u tá»•ng thá»ƒ vá» trÃ­ch xuáº¥t váº¥n Ä‘á» NLP}
+\label{tab:nlp_issue_overall}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}X
+>{\centering\arraybackslash}p{2.1cm}
+>{\centering\arraybackslash}p{1.8cm}
+>{\centering\arraybackslash}p{1.8cm}
+>{\centering\arraybackslash}p{2.4cm}}
+\toprule
+Setup & Val micro-F1 & Test micro-F1 & Test macro-F1 & Test subset accuracy \\
+\midrule
+Word TF-IDF plus OVR Logistic & 0.759 & 0.765 & 0.381 & 0.606 \\
+Word plus Char TF-IDF plus OVR Logistic & 0.764 & 0.763 & 0.408 & 0.603 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Viá»‡c biá»ƒu diá»…n tá»« cá»™ng vá»›i kÃ½ tá»± mang láº¡i macro-F1 cao hÆ¡n, trong khi thiáº¿t láº­p chá»‰ tá»« giá»¯ Ä‘á»™ chÃ­nh xÃ¡c cá»§a micro-F1 vÃ  táº­p há»£p con cao hÆ¡n má»™t chÃºt trong láº§n cháº¡y nÃ y.
+
+\subsection{Cáº£i thiá»‡n trÃªn má»—i nhÃ£n}
+Báº£ng \ref{tab:nlp_issue_per_label_delta} hiá»ƒn thá»‹ sá»± thay Ä‘á»•i F1 cá»§a thá»­ nghiá»‡m má»—i nhÃ£n tá»« tá»« nÃ y sang tá»« khÃ¡c cá»™ng vá»›i thiáº¿t láº­p kÃ½ tá»±.
+
+\begin{table}[H]
+\centering
+\caption{Thay Ä‘á»•i F1 kiá»ƒm tra trÃªn má»—i nhÃ£n trong trÃ­ch xuáº¥t váº¥n Ä‘á»}
+\label{tab:nlp_issue_per_label_delta}
+\begin{tabular}{lccc}
+\toprule
+Label & F1 word & F1 word plus char & Delta \\
+\midrule
+delivery\_shipping & 0.475 & 0.462 & -0.013 \\
+redemption\_activation & 0.267 & 0.304 & +0.037 \\
+product\_quality & 0.308 & 0.301 & -0.007 \\
+customer\_service & 0.314 & 0.185 & -0.128 \\
+refund\_return & 0.145 & 0.333 & +0.188 \\
+usability & 0.462 & 0.476 & +0.014 \\
+value\_price & 0.284 & 0.316 & +0.032 \\
+fraud\_scam & 0.265 & 0.388 & +0.123 \\
+other & 0.911 & 0.910 & -0.001 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CÃ¡c tÃ­nh nÄƒng kÃ½ tá»± giÃºp má»™t sá»‘ nhÃ£n thÆ°a thá»›t nhÆ° hoÃ n tiá»n\_return vÃ  lá»«a Ä‘áº£o\_scam, nhÆ°ng cÃ³ thá»ƒ giáº£m F1 trÃªn má»™t sá»‘ nhÃ£n. Äiá»u nÃ y cho tháº¥y sá»± Ä‘Ã¡nh Ä‘á»•i vá» viá»‡c thu há»“i Ä‘á»™ chÃ­nh xÃ¡c theo nhÃ£n.
+
+\subsection{Chiáº¿n lÆ°á»£c ngÆ°á»¡ng trong cÃ i Ä‘áº·t nhiá»u nhÃ£n}
+TrÃ­ch xuáº¥t váº¥n Ä‘á» sá»­ dá»¥ng ngÆ°á»¡ng Ä‘iá»u chá»‰nh cho má»—i nhÃ£n. Cáº¥u hÃ¬nh ngÆ°á»¡ng khÃ¡c nhau giá»¯a thiáº¿t láº­p chá»‰ tá»« vÃ  thiáº¿t láº­p tá»«+char vÃ¬ phÃ¢n phá»‘i Ä‘iá»ƒm thay Ä‘á»•i theo nhÃ£n.
+
+HÃ nh vi nÃ y Ä‘Æ°á»£c mong Ä‘á»£i trong cÃ¡c tÃ¡c vá»¥ nhiá»u nhÃ£n NLP trong Ä‘Ã³ má»—i nhÃ£n cÃ³ táº§n sá»‘ trÆ°á»›c vÃ  cÆ°á»ng Ä‘á»™ tÃ­n hiá»‡u vÄƒn báº£n khÃ¡c nhau.
+
+\subsection{TÃ­nh tÃ¡i láº­p cá»§a bÆ°á»›c táº¡o template}
+BÆ°á»›c táº¡o template gÃ¡n nhÃ£n issue hiá»‡n Ã¡p dá»¥ng cÆ¡ cháº¿ sáº¯p xáº¿p ID tá»± nhiÃªn trÆ°á»›c khi xuáº¥t CSV. KhÃ³a sáº¯p xáº¿p Ä‘Æ°á»£c triá»ƒn khai theo thá»© tá»±: ID dáº¡ng sá»‘ Ä‘Æ°á»£c sáº¯p theo giÃ¡ trá»‹ sá»‘ nguyÃªn, tiáº¿p theo lÃ  ID khÃ´ng thuáº§n sá»‘ theo thá»© tá»± tá»« vá»±ng khÃ´ng phÃ¢n biá»‡t hoa thÆ°á»ng, vÃ  cuá»‘i cÃ¹ng lÃ  ID rá»—ng. CÃ¡ch nÃ y loáº¡i bá» lá»—i thá»© tá»± kiá»ƒu tá»« Ä‘iá»ƒn nhÆ° \texttt{10} Ä‘á»©ng trÆ°á»›c \texttt{2}.
+
+Hai test há»“i quy Ä‘Æ°á»£c thÃªm táº¡i \texttt{tests/test\_issue\_template\_sort.py}: má»™t test Ä‘Æ¡n vá»‹ cho khÃ³a sáº¯p xáº¿p vÃ  má»™t test Ä‘áº§u-cuá»‘i xÃ¡c nháº­n thá»© tá»± output tá»« \texttt{cmd\_make\_template} trong \texttt{src/issue\_steps/steps.py}.
+
+Cáº­p nháº­t nÃ y cáº£i thiá»‡n tÃ­nh tÃ¡i láº­p cá»§a dá»¯ liá»‡u chÃº thÃ­ch vÃ  Ä‘á»™ tin cáº­y khi bÃ n giao giá»¯a cÃ¡c thÃ nh viÃªn, Ä‘á»“ng thá»i khÃ´ng lÃ m thay Ä‘á»•i cÃ¡c chá»‰ sá»‘ Ä‘Ã¡nh giÃ¡ mÃ´ hÃ¬nh Ä‘Ã£ bÃ¡o cÃ¡o á»Ÿ trÃªn.
+
+
+\subsection{C?p nh?t Level 3 cho classic pipeline}
+Tr?ng th?i code hi?n t?i b? sung g?i Level 3 cho ph?n classic, g?m 4 ?i?m:
+\begin{enumerate}
+\item T?m class-weight theo t?ng label tr?n t?p validation (\texttt{none}, \texttt{balanced}, \texttt{w2}, \texttt{w5}, \texttt{w10}).
+\item H? tr? calibration x?c su?t cho OVR Logistic Regression (\texttt{sigmoid} ho?c \texttt{isotonic}).
+\item Xu?t b?o c?o ?? ?n ??nh ng??ng khi thay ??i delta \{-0.10, -0.05, 0.00, 0.05, 0.10\}.
+\item Th?m l?nh ablation c? th? ch?y tr?c ti?p: \texttt{python -m src.nlp\_ext classic\_ablation}.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Artefact Level 3 v? k?t qu? ch?nh t? l?n ch?y m?i nh?t}
+\label{tab:nlp_level3_artifacts_vi}
+\begin{tabular}{p{5.0cm} p{7.8cm}}
+\toprule
+Artefact & Ghi nh?n \\
+\midrule
+\texttt{results/issue\_steps/02\_class\_weight\_tuning.csv} & L?a ch?n theo label: 8 label d?ng \texttt{balanced}, label \texttt{other} d?ng \texttt{none}. \\
+\texttt{results/issue\_steps/02\_threshold\_stability\_summary.md} & C? b?o c?o ?? ?n ??nh ng??ng cho c? calibrated v? uncalibrated tr?n val/test. \\
+\texttt{results/nlp\_ext/syllabus\_upgrade/nlp\_ablation.csv} & ?? ch?y ablation V0, V2, V5, V6, V7 b?ng m?t command. \\
+\texttt{results/nlp\_ext/syllabus\_upgrade/nlp\_ablation\_summary.md} & Trong l?n ch?y m?i nh?t, V7 cho trade-off negative-first t?t nh?t (recall\_0=0.869, precision\_0=0.636, F2\_0=0.810). \\
+\bottomrule
+\end{tabular}
+\end{table}
+\subsection{Cap nhat Level 4 cho issue transformer multi-label}
+Trang thai code hien tai da bo sung lenh Level 4 cho bai toan issue extraction da nhan:
+\texttt{python -m src.nlp\_ext issue\_transformer\_multilabel --labels\_path data/issue\_labels.csv --data\_path data/Gift\_Cards.jsonl}.
+
+Lan chay moi nhat dung 10,000 mau gan nhan, voi train=3,000, val=1,000, test=2,000 sau khi cap mau. Nguong transformer giu co dinh 0.50 cho tung label. Co che hybrid routing route cac mau margin thap tren model classic (\texttt{hybrid\_margin=0.08}) va gioi han ti le route bang \texttt{hybrid\_max\_route\_rate=0.25}. So mau route sang transformer trong test la 527/2,000.
+
+\begin{table}[H]
+\centering
+\caption{So sanh ket qua Level 4 tren test split}
+\label{tab:nlp_level4_issue_transformer_vi}
+\begin{tabular}{lcccc}
+\toprule
+Model & Micro-F1 & Macro-F1 & Subset accuracy & Hamming loss \\
+\midrule
+Classic issue model (OVR Logistic) & 0.792 & 0.528 & 0.656 & 0.055 \\
+Transformer multi-label & 0.646 & 0.188 & 0.551 & 0.101 \\
+Hybrid route (classic + transformer) & 0.730 & 0.338 & 0.615 & 0.074 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ket qua nay cho thay cau hinh transformer hien tai chua vuot duoc classic model da tune tren bo nhan nay. Tuy nhien, hybrid routing da thu hep dang ke khoang cach hieu nang, dong thoi van giu huong nang cap theo deep contextual modeling trong muc runtime va do phuc tap trien khai chap nhan duoc.
+
+\section{Káº¿t quáº£ cho GÃ³i nÃ¢ng cáº¥p giÃ¡o trÃ¬nh}
+\subsection{ÄÆ°á»ng cÆ¡ sá»Ÿ cá»• Ä‘iá»ƒn cho cÃ¡c thuáº­t toÃ¡n khÃ³a há»c cá»‘t lÃµi}
+Báº£ng \ref{tab:nlp_syllabus_bench} bÃ¡o cÃ¡o sá»‘ liá»‡u kiá»ƒm tra cho khá»‘i cÆ¡ sá»Ÿ Ä‘Æ°á»£c thÃªm vÃ o. Khá»‘i nÃ y sá»­ dá»¥ng cÃ¹ng má»™t cÃ¡ch phÃ¢n chia dá»¯ liá»‡u vÃ  khÃ´ng thÃªm nhÃ£n má»›i.
+
+\begin{table}[H]
+\centering
+\caption{Káº¿t quáº£ kiá»ƒm tra cÃ¡c cÆ¡ sá»Ÿ giÃ¡o trÃ¬nh NLP bá»• sung}
+\label{tab:nlp_syllabus_bench}
+\begin{tabular}{lccc}
+\toprule
+Model & Precision\_0 & Recall\_0 & F2\_0 \\
+\midrule
+Logistic Regression (L2) & 0.703 & 0.913 & 0.862 \\
+Multinomial Naive Bayes & 0.633 & 0.913 & 0.839 \\
+Complement Naive Bayes & 0.510 & 0.952 & 0.811 \\
+Perceptron & 0.684 & 0.828 & 0.795 \\
+LinearSVM & 0.789 & 0.847 & 0.835 \\
+SGD log-loss & 0.616 & 0.921 & 0.838 \\
+SVD semantic Logistic Regression & 0.501 & 0.920 & 0.788 \\
+FFNN MLP on SVD vectors & 0.799 & 0.730 & 0.742 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nhá»¯ng káº¿t quáº£ nÃ y cho tháº¥y sá»± khÃ¡c biá»‡t rÃµ rÃ ng vá» hÃ nh vi. Complement Naive Bayes cÃ³ má»©c thu há»“i Ã¢m cao nháº¥t lÃ  0,952, nhÆ°ng Ä‘á»™ chÃ­nh xÃ¡c tháº¥p á»Ÿ má»©c 0,510. Há»“i quy logistic cho F2\_0 tá»‘t nháº¥t á»Ÿ má»©c 0,862 vá»›i Ä‘á»™ chÃ­nh xÃ¡c cao hÆ¡n. LinearSVM cÃ³ Ä‘á»™ chÃ­nh xÃ¡c cao nháº¥t\_0 trong sá»‘ cÃ¡c mÃ´ hÃ¬nh thu há»“i máº¡nh máº½, trong khi tÃ­nh nÄƒng ghi nháº­t kÃ½ SGD mang láº¡i kháº£ nÄƒng thu há»“i cao vá»›i Ä‘á»™ chÃ­nh xÃ¡c tháº¥p hÆ¡n. Äiá»u nÃ y há»— trá»£ má»™t cuá»™c tháº£o luáº­n Ä‘Ã¡nh Ä‘á»•i máº¡nh máº½ giá»¯a cÃ¡c thuáº­t toÃ¡n khÃ³a há»c cá»‘t lÃµi.
+
+\subsection{HÃ nh vi chá»n lá»c trong cÃ¡c Ä‘Æ°á»ng cÆ¡ sá»Ÿ bá»• sung}
+Äá»‘i vá»›i cÃ¡c mÃ´ hÃ¬nh xÃ¡c suáº¥t trong khá»‘i Ä‘Æ°á»£c thÃªm vÃ o, Ã¡p dá»¥ng cÃ¹ng má»™t dáº£i khÃ´ng cháº¯c cháº¯n 0,40 vÃ  0,60. Há»“i quy logistic cho pháº¡m vi kiá»ƒm tra 0,887, Ä‘á»™ chÃ­nh xÃ¡c chá»n lá»c\_0 0,763 vÃ  thu há»“i cÃ³ chá»n lá»c\_0 0,946. Pháº§n bá»• sung Naive Bayes cho pháº¡m vi kiá»ƒm tra 0,900 vÃ  thu há»“i cÃ³ chá»n lá»c\_0 0,963, nhÆ°ng Ä‘á»™ chÃ­nh xÃ¡c chá»n lá»c\_0 chá»‰ lÃ  0,545. Äiá»u nÃ y xÃ¡c nháº­n ráº±ng khá»‘i Ä‘Æ°á»£c thÃªm vÃ o phÃ¹ há»£p vá»›i chÃ­nh sÃ¡ch cá»§a dá»± Ã¡n vÃ  duy trÃ¬ sá»± kiá»ƒm soÃ¡t cÃ¢n báº±ng minh báº¡ch.
+
+\subsection{Káº¿t quáº£ mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-Gram}
+Báº£ng \ref{tab:nlp_ngram_results} bÃ¡o cÃ¡o má»©c Ä‘á»™ phá»©c táº¡p cá»§a cÃ¡c mÃ´ hÃ¬nh unigram vÃ  bigram vá»›i add-k báº±ng 1,0.
+
+\begin{table}[H]
+\centering
+\caption{Sá»± bá»‘i rá»‘i cá»§a khá»‘i mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram}
+\label{tab:nlp_ngram_results}
+\begin{tabular}{lcc}
+\toprule
+Model & Validation perplexity & Test perplexity \\
+\midrule
+Unigram add-k & 376.51 & 378.02 \\
+Bigram add-k & 358.59 & 363.08 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bigram mang láº¡i Ä‘á»™ phá»©c táº¡p tháº¥p hÆ¡n unigram trÃªn cáº£ hai pháº§n tÃ¡ch. Äiá»u nÃ y Ä‘Æ°á»£c mong Ä‘á»£i vÃ¬ bigram sá»­ dá»¥ng ngá»¯ cáº£nh cá»¥c bá»™ tá»« mÃ£ thÃ´ng bÃ¡o trÆ°á»›c Ä‘Ã³. Khoáº£ng cÃ¡ch khÃ´ng lá»›n vÃ¬ vÄƒn báº£n Ã´n táº­p ngáº¯n vÃ  á»“n Ã o nhÆ°ng á»•n Ä‘á»‹nh vÃ  cÃ³ Ã½ nghÄ©a Ä‘á»‘i vá»›i chá»§ Ä‘á» mÃ´ hÃ¬nh ngÃ´n ngá»¯.
+
+\subsection{CÃ¡c táº¡o tÃ¡c RNN, MLM vÃ  LLM}
+Báº£ng \ref{tab:nlp_extra_artifacts} tÃ³m táº¯t cÃ¡c táº¡o pháº©m giÃ¡o trÃ¬nh bá»• sung hiá»‡n Ä‘ang Ä‘Æ°á»£c triá»ƒn khai vÃ  cÃ³ thá»ƒ tÃ¡i táº¡o á»Ÿ tráº¡ng thÃ¡i kho lÆ°u trá»¯ nÃ y.
+
+\begin{table}[H]
+\centering
+\caption{CÃ¡c táº¡o pháº©m giÃ¡o trÃ¬nh NLP bá»• sung}
+\label{tab:nlp_extra_artifacts}
+\begin{tabular}{lccc}
+\toprule
+Táº¡o tÃ¡c & Chá»‰ sá»‘ & GiÃ¡ trá»‹ & Ghi chÃº \\
+\midrule
+RNN/LSTM baseline & recall\_0 (test) & 0.911 & recall cao, precision cÃ²n háº¡n cháº¿ \\
+RNN/LSTM baseline & F2\_0 (test) & 0.615 & há»— trá»£ bao phá»§ chá»§ Ä‘á» mÃ´ hÃ¬nh chuá»—i \\
+MLM probe & hit@10 & 0.600 & 3/5 máº«u probe khá»›p vá»›i táº­p token ká»³ vá»ng \\
+LLM prompt baseline & recall\_0 (test) & 0.513 & Ä‘Æ°á»ng cÆ¡ sá»Ÿ proxy theo prompt vá»›i Ä‘áº§u ra xÃ¡c Ä‘á»‹nh \\
+LLM prompt baseline & F2\_0 (test) & 0.499 & tháº¥p hÆ¡n cÃ¡c baseline phÃ¢n loáº¡i, giá»¯ láº¡i Ä‘á»ƒ thá»ƒ hiá»‡n Ä‘á»™ bao phá»§ há»c pháº§n \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ma tráº­n phÃ¹ há»£p vá»›i khÃ³a há»c Ä‘Æ°á»£c cáº­p nháº­t}
+Báº£ng \ref{tab:nlp_course_fit} hiá»ƒn thá»‹ ma tráº­n pháº¡m vi chá»§ Ä‘á» Ä‘Æ°á»£c cáº­p nháº­t sau khá»‘i nÃ¢ng cáº¥p má»›i.
+
+\begin{table}[H]
+\centering
+\caption{Pháº¡m vi chá»§ Ä‘á» Ä‘Æ°á»£c cáº­p nháº­t sau khi nÃ¢ng cáº¥p khÃ´ng cÃ³ dá»¯ liá»‡u má»›i}
+\label{tab:nlp_course_fit}
+\begin{tabular}{lcc}
+\toprule
+NhÃ³m chá»§ Ä‘á» & Tá»· lá»‡ bao phá»§ & Má»©c Ä‘á»™ \\
+\midrule
+XÃ¡c suáº¥t & 100 & Cao \\
+Biá»ƒu thá»©c chÃ­nh quy & 50 & Má»™t pháº§n \\
+CÃ¡c thÆ°á»›c Ä‘o Ä‘Ã¡nh giÃ¡ & 100 & Cao \\
+MÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram & 100 & Cao \\
+Naive Bayes & 100 & Cao \\
+Perceptron & 100 & Cao \\
+Há»“i quy logistic & 100 & Cao \\
+Máº¡ng nÆ¡-ron truyá»n tháº³ng & 100 & Cao \\
+PyTorch cÆ¡ báº£n & 100 & Cao \\
+Ngá»¯ nghÄ©a vector vÃ  embedding & 80 & Trung bÃ¬nh-cao \\
+Máº¡ng nÆ¡-ron há»“i tiáº¿p & 100 & Cao \\
+Transformer vÃ  LLM & 100 & Cao \\
+MÃ´ hÃ¬nh ngÃ´n ngá»¯ che khuyáº¿t & 100 & Cao \\
+á»¨ng dá»¥ng cá»§a LLM & 90 & Cao \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Äiá»ƒm bao quÃ¡t tá»•ng thá»ƒ Æ°á»›c tÃ­nh lÃ  94,3\%, Ä‘Æ°á»£c tÃ­nh trá»±c tiáº¿p tá»« cÃ¡c táº¡o pháº©m Ä‘Æ°á»£c táº¡o trong thÆ° má»¥c Ä‘áº§u ra nÃ¢ng cáº¥p giÃ¡o trÃ¬nh.
+
+\section{Tháº£o luáº­n vá» mÃ¡y biáº¿n Ã¡p cá»• Ä‘iá»ƒn vÃ  mÃ¡y biáº¿n Ã¡p}
+NLP thÆ°a thá»›t cá»• Ä‘iá»ƒn vÃ  NLP dá»±a trÃªn mÃ¡y biáº¿n Ã¡p thá»ƒ hiá»‡n cÃ¡c cáº¥u hÃ¬nh hiá»‡u suáº¥t khÃ¡c biá»‡t. Trong cÃ i Ä‘áº·t nÃ y, Ä‘á»™ng cÆ¡ V6 cá»• Ä‘iá»ƒn duy trÃ¬ kháº£ nÄƒng thu há»“i Ã¢m cao vÃ  thu há»“i cÃ³ chá»n lá»c cao, trong khi máº«u mÃ¡y biáº¿n Ã¡p cung cáº¥p Ä‘á»™ chÃ­nh xÃ¡c tá»•ng thá»ƒ cao hÆ¡n vÃ  Ä‘á»™ chÃ­nh xÃ¡c Ã¢m cao hÆ¡n.
+
+Äá»‘i vá»›i cÃ¡c ká»‹ch báº£n phÃ¢n loáº¡i Æ°u tiÃªn phÃ¡t hiá»‡n cÃ¡c Ä‘Ã¡nh giÃ¡ báº¥t lá»£i, V6 cá»• Ä‘iá»ƒn phÃ¹ há»£p cháº·t cháº½ hÆ¡n vá»›i chÃ­nh sÃ¡ch quyáº¿t Ä‘á»‹nh. Äá»‘i vá»›i sáº¯c thÃ¡i ngá»¯ nghÄ©a vÃ  cÃ¡ch diá»…n Ä‘áº¡t thÃ nh ngá»¯, Ä‘áº§u ra mÃ¡y biáº¿n Ã¡p cung cáº¥p giÃ¡ trá»‹ bá»• sung khi káº¿t há»£p vá»›i Ä‘iá»u khiá»ƒn ngÆ°á»¡ng.
+
+Do Ä‘Ã³, chiáº¿n lÆ°á»£c káº¿t há»£p lÃ  há»£p lÃ½: sá»­ dá»¥ng mÃ´ hÃ¬nh cá»• Ä‘iá»ƒn lÃ m lá»›p phÃ¢n loáº¡i chÃ­nh vÃ  Ã¡p dá»¥ng tÃ­nh Ä‘iá»ƒm biáº¿n Ã¡p lÃ m bÆ°á»›c phÃ¢n tÃ­ch phá»¥ cho cÃ¡c trÆ°á»ng há»£p khÃ´ng rÃµ rÃ ng.
+
+\section{PhÃ¢n tÃ­ch lá»—i vÃ  cÃ¡c cháº¿ Ä‘á»™ sai há»ng}
+Báº£ng \ref{tab:nlp_error_cases} trÃ¬nh bÃ y cÃ¡c trÆ°á»ng há»£p lá»—i hoáº·c rá»§i ro cá»¥ thá»ƒ kÃ¨m theo giáº£i thÃ­ch cá»¥ thá»ƒ cho tá»«ng mÃ´ hÃ¬nh. Äiá»u nÃ y má»Ÿ rá»™ng viá»‡c Ä‘Ã¡nh giÃ¡ ra ngoÃ i cÃ¡c sá»‘ liá»‡u tá»•ng há»£p.
+
+\begin{table}[H]
+\centering
+\caption{CÃ¡c trÆ°á»ng há»£p lá»—i vÃ  rá»§i ro cá»¥ thá»ƒ kÃ¨m theo lá»i giáº£i thÃ­ch}
+\label{tab:nlp_error_cases}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.9cm} >{\centering\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{4.4cm} >{\raggedright\arraybackslash}p{2.6cm}}
+\toprule
+VÄƒn báº£n & Ká»³ vá»ng & Äáº§u ra mÃ´ hÃ¬nh & NguyÃªn nhÃ¢n sai/rá»§i ro & Biá»‡n phÃ¡p kháº¯c phá»¥c trong dá»± Ã¡n \\
+\midrule
+not bad & TÃ­ch cá»±c & classic: TiÃªu cá»±c & Biá»ƒu diá»…n thÆ°a Ä‘áº·t trá»ng sá»‘ quÃ¡ cao cho token bad vÃ  chÆ°a mÃ´ hÃ¬nh hÃ³a tá»‘t phá»§ Ä‘á»‹nh thÃ nh ngá»¯ & Duy trÃ¬ so sÃ¡nh vá»›i transformer vÃ  cÆ¡ cháº¿ phÃ¢n xá»­ theo dáº£i khÃ´ng cháº¯c cháº¯n khi Ä‘á»™ tin cáº­y tháº¥p \\
+good but late delivery & TiÃªu cá»±c hoáº·c cáº§n gáº¯n cá» váº¥n Ä‘á» & transformer: TÃ­ch cá»±c & Cháº¥m Ä‘iá»ƒm theo ngá»¯ cáº£nh Ä‘áº·t trá»ng sá»‘ cao á»Ÿ má»‡nh Ä‘á» tÃ­ch cá»±c Ä‘áº§u cÃ¢u vÃ  thiáº¿u nháº¥n máº¡nh pháº§n phÃ n nÃ n cuá»‘i cÃ¢u & Giá»¯ mÃ´ hÃ¬nh classic theo chÃ­nh sÃ¡ch negative-first Ä‘á»ƒ Ä‘á»‹nh tuyáº¿n vÃ  dÃ¹ng mÃ´-Ä‘un issue extraction Ä‘á»ƒ gáº¯n nhÃ£n khiáº¿u náº¡i \\
+gr8 / thx / idk & KhÃ´ng cháº¯c cháº¯n & both: KhÃ´ng cháº¯c cháº¯n & VÄƒn báº£n quÃ¡ ngáº¯n mang tÃ­n hiá»‡u cáº£m xÃºc yáº¿u vÃ  Ä‘á»™ mÆ¡ há»“ cao & Duy trÃ¬ luáº­t fallback too\_short Ä‘á»ƒ trÃ¡nh gÃ¡n nhÃ£n cá»©ng cÆ°á»¡ng bá»©c \\
+refund\_return (nhÃ£n hiáº¿m) & Cáº§n phÃ¡t hiá»‡n Ä‘Ãºng váº¥n Ä‘á» hiáº¿m & recall cá»§a mÃ´ hÃ¬nh issue dao Ä‘á»™ng & Sá»‘ máº«u há»— trá»£ tháº¥p lÃ m biÃªn quyáº¿t Ä‘á»‹nh kÃ©m á»•n Ä‘á»‹nh vÃ  nháº¡y vá»›i ngÆ°á»¡ng & Ãp dá»¥ng biáº¿n thá»ƒ char n-gram vÃ  tinh chá»‰nh ngÆ°á»¡ng theo nhÃ£n; Æ°u tiÃªn bá»• sung gÃ¡n nhÃ£n cho nhÃ³m hiáº¿m \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CÃ¡c kiá»ƒu lá»—i phá»• biáº¿n lÃ  phÃ¢n cá»±c há»—n há»£p vá»›i cÃ¡c Ä‘iá»ƒm Ä‘Ã¡nh dáº¥u tÆ°Æ¡ng pháº£n, vÄƒn báº£n cÃ³ Ã­t thÃ´ng tin ráº¥t ngáº¯n vÃ  tÃ­nh khÃ´ng á»•n Ä‘á»‹nh cá»§a nhÃ£n thÆ°a trong quÃ¡ trÃ¬nh trÃ­ch xuáº¥t nhiá»u nhÃ£n. CÃ¡c máº«u nÃ y Ä‘Æ°á»£c theo dÃµi vÃ  giáº£i quyáº¿t rÃµ rÃ ng thÃ´ng qua cÃ¡c biá»‡n phÃ¡p kiá»ƒm soÃ¡t phiáº¿u tráº¯ng vÃ  theo tá»«ng nhÃ£n.
+
+\section{Giao thá»©c trÃ¬nh diá»…n}
+Giao thá»©c trÃ¬nh diá»…n trá»±c tiáº¿p Ä‘Æ°á»£c thiáº¿t káº¿ cho cá»­a sá»• trÃ¬nh bÃ y kÃ©o dÃ i 10 phÃºt vá»›i hoáº¡t Ä‘á»™ng á»•n Ä‘á»‹nh vÃ  cÃ³ thá»ƒ kiá»ƒm tra Ä‘Æ°á»£c.
+
+\subsection{Luá»“ng trÃ¬nh diá»…n (10 phÃºt bao gá»“m cáº£ pháº§n há»i Ä‘Ã¡p)}
+\begin{enumerate}
+\item Kiá»ƒm tra Ä‘á»™ tÃ¡i láº­p: cháº¡y \texttt{python -m pytest -q} vÃ  hiá»ƒn thá»‹ Ä‘Ã£ vÆ°á»£t qua cÃ¡c bÃ i kiá»ƒm tra khÃ³i.
+\item Cháº¡y báº£n demo CLI cáº£m tÃ­nh vá»›i Ä‘áº§u vÃ o tÃ­ch cá»±c, tiÃªu cá»±c vÃ  kiá»ƒu khÃ´ng cháº¯c cháº¯n.
+\item Cháº¡y dá»± Ä‘oÃ¡n trÃ­ch xuáº¥t váº¥n Ä‘á» cho vÄƒn báº£n giá»‘ng nhÆ° khiáº¿u náº¡i.
+\item Cháº¡y báº£n demo mÃ¡y biáº¿n Ã¡p cho má»™t cá»¥m tá»« ngáº¯n mÆ¡ há»“.
+\item Hiá»ƒn thá»‹ báº£ng Ä‘iá»ƒm thá»‘ng nháº¥t vÃ  giáº£i thÃ­ch sá»± cÃ¢n báº±ng giá»¯a cÃ¡c mÃ´ hÃ¬nh.
+\end{enumerate}
+
+\subsection{CÃ¡c lá»‡nh Ä‘Æ°á»£c Ä‘á» xuáº¥t}
+\begin{verbatim}
+python -m pytest -q
+python demo.py "great product and fast delivery" "terrible quality, broke after two days" "idk if this is worth the price"
+python -m src.issue_steps predict --text "good but slow delivery"
+python demo_transformer.py "not bad at all"
+python scripts/build_scoreboard.py
+\end{verbatim}
+
+\subsection{HÃ nh vi demo dá»± kiáº¿n}
+HÃ nh vi dá»± kiáº¿n Ä‘Æ°á»£c chá»‰ Ä‘á»‹nh trong \texttt{docs/expected\_outputs.md}. CÃ¡c Ä‘Ã¡nh giÃ¡ tÃ­ch cá»±c vÃ  tiÃªu cá»±c rÃµ rÃ ng pháº£i chÃ­nh xÃ¡c theo hÆ°á»›ng, trong khi thÃ´ng tin tháº¥p hoáº·c tÃ­n hiá»‡u há»—n há»£p cÃ³ thá»ƒ tráº£ vá» \texttt{KhÃ´ng cháº¯c cháº¯n}. Giao thá»©c nÃ y há»— trá»£ kháº£ nÄƒng diá»…n giáº£i vÃ  á»•n Ä‘á»‹nh hoáº¡t Ä‘á»™ng.
+
+\section{Ma tráº­n truy váº¿t táº¡o tÃ¡c}
+Báº£ng \ref{tab:nlp_project_evidence} Ã¡nh xáº¡ tá»«ng khÃ­a cáº¡nh dá»± Ã¡n tá»›i báº±ng chá»©ng cá»¥ thá»ƒ trong kho lÆ°u trá»¯ nÃ y.
+
+\begin{table}[H]
+\centering
+\caption{KÃ­ch thÆ°á»›c dá»± Ã¡n vÃ  truy xuáº¥t nguá»“n gá»‘c táº¡o tÃ¡c}
+\label{tab:nlp_project_evidence}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{4.7cm}}
+\toprule
+TiÃªu chÃ­ & Ná»™i dung Ä‘Ã£ triá»ƒn khai & Báº±ng chá»©ng trong kho mÃ£ \\
+\midrule
+Ná»™i dung trÃ¬nh bÃ y & MÃ´ táº£ pipeline rÃµ rÃ ng, lá»‡nh cháº¡y cÃ³ thá»ƒ tÃ¡i láº­p, luá»“ng demo cÃ³ thá»ƒ kiá»ƒm chá»©ng & CÃ¡c lá»‡nh trong README, \texttt{src/run\_all.py}, \texttt{demo.py}, \texttt{demo\_transformer.py}, \texttt{demo\_app.py} \\
+Ã nghÄ©a dá»± Ã¡n & BÃ i toÃ¡n thá»±c táº¿ theo ngá»¯ cáº£nh triage há»— trá»£, chÃ­nh sÃ¡ch negative-first vÃ  nhÃ£n hÃ nh Ä‘á»™ng má»©c issue & \texttt{src/dm2\_steps/common.py}, cÃ¡c táº¡o tÃ¡c uncertainty, CSV so sÃ¡nh ca khÃ³ \\
+Quy trÃ¬nh lÃ m viá»‡c & PhÃ¢n cÃ´ng module rÃµ rÃ ng, quy táº¯c review chÃ©o, cá»•ng kiá»ƒm soÃ¡t cháº¥t lÆ°á»£ng vÃ  kiá»ƒm tra thá»© tá»± template issue theo tÃ­nh xÃ¡c Ä‘á»‹nh & \texttt{docs/contribution\_matrix.md}, \texttt{.github/pull\_request\_template.md}, smoke tests, \texttt{tests/test\_issue\_template\_sort.py} \\
+Cháº¥t lÆ°á»£ng káº¿t quáº£ & So sÃ¡nh nhiá»u mÃ´ hÃ¬nh, chá»‰ sá»‘ selective, phÃ¢n tÃ­ch theo nhÃ£n vÃ  giáº£i thÃ­ch ca lá»—i & \texttt{results/scoreboard/*}, \texttt{results/nlp\_ext/syllabus\_upgrade/*}, pháº§n phÃ¢n tÃ­ch lá»—i \\
+Cháº¥t lÆ°á»£ng demo & CÃ³ cáº£ Ä‘Æ°á»ng cháº¡y CLI vÃ  UI, Ä‘áº§u vÃ o kiá»ƒm thá»­ xÃ¡c Ä‘á»‹nh, tiÃªu chÃ­ hÃ nh vi ká»³ vá»ng rÃµ rÃ ng & \texttt{docs/demo\_inputs.txt}, \texttt{docs/expected\_outputs.md}, demo Streamlit vÃ  CLI \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Má»©c Ä‘á»™ phÃ¹ há»£p há»c thuáº­t vá»›i há»c pháº§n NLP}
+Dá»± Ã¡n nÃ y hiá»‡n hiá»ƒn thá»‹ nhiá»u Ã½ tÆ°á»Ÿng NLP trong má»™t há»‡ thá»‘ng. NÃ³ bao gá»“m chuáº©n hÃ³a vÄƒn báº£n, Ã¡nh xáº¡ tá»« vá»±ng, mÃ£ hÃ³a thÆ°a thá»›t n-gram, xá»­ lÃ½ pháº¡m vi phá»§ Ä‘á»‹nh, tÃ­n hiá»‡u cáº¥p má»‡nh Ä‘á», phÃ¢n loáº¡i vÄƒn báº£n nhiá»u nhÃ£n, hiá»‡u chá»‰nh ngÆ°á»¡ng vÃ  tinh chá»‰nh biáº¿n Ã¡p. NÃ³ cÅ©ng bao gá»“m Naive Bayes, Perceptron, Ä‘Æ°á»ng cÆ¡ sá»Ÿ ngá»¯ nghÄ©a chuyá»ƒn tiáº¿p nguá»“n cáº¥p dá»¯ liá»‡u rÃµ rÃ ng, táº¡o pháº©m mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram, Ä‘Æ°á»ng cÆ¡ sá»Ÿ RNN/LSTM, thÄƒm dÃ² MLM vÃ  táº¡o pháº©m á»©ng dá»¥ng kiá»ƒu lá»i nháº¯c LLM.
+
+Dá»± Ã¡n váº«n cÃ³ thá»ƒ sá»­ dá»¥ng trá»±c tiáº¿p cho thá»­ nghiá»‡m dá»±a trÃªn khÃ³a há»c. NÃ³ cung cáº¥p cÃ¡c táº¡o pháº©m Ä‘Ã£ lÆ°u, sá»‘ liá»‡u cÃ³ thá»ƒ tÃ¡i táº¡o, báº£n ghi quy trÃ¬nh lÃ m viá»‡c chÃº thÃ­ch vÃ  táº­p lá»‡nh suy luáº­n cÃ³ thá»ƒ triá»ƒn khai. NÃ³ cÅ©ng bao gá»“m má»™t ma tráº­n bao phá»§ chá»§ Ä‘á» phÃ¹ há»£p cho viá»‡c báº£o vá»‡ miá»‡ng.
+
+Äá»‘i vá»›i viá»‡c há»c trong khÃ³a há»c, phiÃªn báº£n cáº­p nháº­t cung cáº¥p báº±ng chá»©ng máº¡nh máº½ hÆ¡n vá» sá»± cÃ¢n báº±ng giá»¯a cÃ¡c phÆ°Æ¡ng phÃ¡p tiáº¿p cáº­n NLP cá»• Ä‘iá»ƒn vÃ  sÃ¢u sáº¯c theo má»™t má»¥c tiÃªu kinh doanh vÃ  má»™t táº­p dá»¯ liá»‡u cá»‘ Ä‘á»‹nh.
+
+\section{Háº¡n cháº¿ vÃ  cÃ´ng viá»‡c trong tÆ°Æ¡ng lai}
+Háº¡n cháº¿ chÃ­nh váº«n lÃ  sá»± máº¥t cÃ¢n báº±ng dá»¯ liá»‡u, Ä‘áº·c biá»‡t lÃ  vá» tÃ¢m lÃ½ tiÃªu cá»±c vÃ  cÃ¡c nhÃ£n váº¥n Ä‘á» hiáº¿m gáº·p. Äiá»u nÃ y áº£nh hÆ°á»Ÿng Ä‘áº¿n Ä‘á»™ chÃ­nh xÃ¡c vÃ  Ä‘á»™ á»•n Ä‘á»‹nh trong má»™t sá»‘ mÃ´ hÃ¬nh.
+
+Má»™t háº¡n cháº¿ khÃ¡c lÃ  Ä‘á»™ sÃ¢u khÃ´ng Ä‘á»“ng Ä‘á»u giá»¯a cÃ¡c chá»§ Ä‘á». Máº·c dÃ¹ má»©c Ä‘á»™ bao phá»§ cao nhÆ°ng má»™t sá»‘ chá»§ Ä‘á» Ä‘Æ°á»£c thá»ƒ hiá»‡n báº±ng cÃ¡c táº¡o pháº©m nháº¹ (vÃ­ dá»¥: cÃ¡c biá»ƒu thá»©c chÃ­nh quy á»Ÿ má»©c Ä‘á»™ bao phá»§ 50\% vÃ  cÃ¡c Ä‘áº§u dÃ² MLM/LLM nhá» gá»n).
+
+CÃ´ng viá»‡c trong tÆ°Æ¡ng lai cÃ³ thá»ƒ táº­p trung vÃ o chiá»u sÃ¢u cháº¥t lÆ°á»£ng chá»© khÃ´ng chá»‰ sá»± hiá»‡n diá»‡n cá»§a chá»§ Ä‘á». CÃ¡c bÆ°á»›c tiáº¿p theo lÃ : táº¡o tÃ¡c cáº¯t bá» hoÃ n toÃ n cho cÃ¡c khá»‘i phá»§ Ä‘á»‹nh/char/tá»« vá»±ng, phÃ¢n nhÃ³m lá»—i phong phÃº hÆ¡n cho cÃ¡c phá»§ Ä‘á»‹nh sai, phÃ¢n tÃ­ch tiá»n xá»­ lÃ½ táº­p trung vÃ o biá»ƒu thá»©c chÃ­nh quy máº¡nh máº½ hÆ¡n vÃ  cÃ´ng cá»¥ demo cháº·t cháº½ hÆ¡n liÃªn káº¿t tá»«ng dá»± Ä‘oÃ¡n vá»›i mÃ´-Ä‘un Ä‘Ã³ng gÃ³p cá»§a nÃ³.
+
+\section{Pháº§n káº¿t luáº­n}
+CÃ´ng viá»‡c nÃ y trÃ¬nh bÃ y má»™t quy trÃ¬nh Ä‘Ã¡nh giÃ¡-hiá»ƒu biáº¿t hoÃ n chá»‰nh bao gá»“m phÃ¢n loáº¡i tÃ¬nh cáº£m, trÃ­ch xuáº¥t váº¥n Ä‘á» vÃ  má»Ÿ rá»™ng dá»±a trÃªn mÃ¡y biáº¿n Ã¡p. MÃ´ hÃ¬nh thÆ°a thá»›t nháº­n biáº¿t ngá»¯ cáº£nh cá»• Ä‘iá»ƒn cung cáº¥p hÃ nh vi tiÃªu cá»±c Ä‘áº§u tiÃªn máº¡nh máº½, trong khi pháº§n má»Ÿ rá»™ng biáº¿n Ã¡p cáº£i thiá»‡n Ä‘á»™ chÃ­nh xÃ¡c vÃ  Ä‘á»™ cháº¯c cháº¯n theo ngá»¯ cáº£nh trong cÃ¡c trÆ°á»ng há»£p Ä‘Æ°á»£c chá»n. TrÃ­ch xuáº¥t váº¥n Ä‘á» Ä‘a nhÃ£n chuyá»ƒn Ä‘á»•i káº¿t quáº£ cáº£m tÃ­nh thÃ nh cÃ¡c danh má»¥c váº¥n Ä‘á» cÃ³ liÃªn quan Ä‘áº¿n hoáº¡t Ä‘á»™ng. Khá»‘i má»Ÿ rá»™ng giÃ¡o trÃ¬nh bao gá»“m cÃ¡c Ä‘Æ°á»ng cÆ¡ sá»Ÿ cá»• Ä‘iá»ƒn, mÃ´ hÃ¬nh ngÃ´n ngá»¯ N-gram, RNN/LSTM, thÄƒm dÃ² MLM vÃ  cÃ¡c táº¡o pháº©m nháº¯c nhá»Ÿ LLM mÃ  khÃ´ng Ä‘Æ°a ra dá»¯ liá»‡u Ä‘Æ°á»£c gáº¯n nhÃ£n má»›i. Vá»›i bá»™ táº¡o tÃ¡c hiá»‡n táº¡i, dá»± Ã¡n thá»ƒ hiá»‡n kháº£ nÄƒng tÃ¡i táº¡o vÃ  Ä‘á»™ bao phá»§ giÃ¡o trÃ¬nh Æ°á»›c tÃ­nh lÃ  94,3\%.
+
+\clearpage
+\section*{TÃ i liá»‡u tham kháº£o}
+\addcontentsline{toc}{section}{TÃ i liá»‡u tham kháº£o}
+\begin{thebibliography}{99}
+
+\bibitem{jurafsky2026}
+Daniel Jurafsky and James H. Martin.
+\textit{Speech and Language Processing} (3rd ed. draft).
+Online manuscript, January 2026.
+\newline\texttt{https://web.stanford.edu/~jurafsky/slp3/}
+
+\bibitem{manning2008ir}
+Christopher D. Manning, Prabhakar Raghavan, and Hinrich Schutze.
+\textit{Introduction to Information Retrieval}.
+Cambridge University Press, 2008.
+\newline\texttt{https://nlp.stanford.edu/IR-book/}
+
+\bibitem{turney2002}
+Peter D. Turney.
+Thumbs up or thumbs down? Semantic orientation applied to unsupervised classification of reviews.
+In \textit{Proceedings of ACL}, 2002.
+\newline\texttt{https://aclanthology.org/P02-1053/}
+
+\bibitem{wang2012}
+Sida I. Wang and Christopher D. Manning.
+Baselines and Bigrams: Simple, Good Sentiment and Topic Classification.
+In \textit{Proceedings of ACL}, 2012.
+\newline\texttt{https://aclanthology.org/P12-2018/}
+
+\bibitem{wiegand2010}
+Michael Wiegand, Alexandra Balahur, Benjamin Roth, Dietrich Klakow, and Andres Montoyo.
+A Survey on the Role of Negation in Sentiment Analysis.
+In \textit{Proceedings of the Workshop on Negation and Speculation in Natural Language Processing}, 2010.
+\newline\texttt{https://aclanthology.org/W10-3111/}
+
+\bibitem{joulin2017}
+Armand Joulin, Edouard Grave, Piotr Bojanowski, and Tomas Mikolov.
+Bag of Tricks for Efficient Text Classification.
+In \textit{Proceedings of EACL}, 2017.
+\newline\texttt{https://aclanthology.org/E17-2068/}
+
+\bibitem{nielsen2011}
+Finn Arup Nielsen.
+A new ANEW: Evaluation of a word list for sentiment analysis in microblogs.
+\textit{arXiv preprint arXiv:1103.2903}, 2011.
+\newline\texttt{https://arxiv.org/abs/1103.2903}
+
+\bibitem{forman2003}
+George Forman.
+An extensive empirical study of feature selection metrics for text classification.
+\textit{Journal of Machine Learning Research}, 3:1289--1305, 2003.
+\newline\texttt{https://www.jmlr.org/papers/v3/forman03a.html}
+
+\bibitem{rifkin2004}
+Ryan Rifkin and Aldebaro Klautau.
+In defense of one-vs-all classification.
+\textit{Journal of Machine Learning Research}, 5:101--141, 2004.
+\newline\texttt{https://www.jmlr.org/papers/v5/rifkin04a.html}
+
+\bibitem{tsoumakas2011}
+Grigorios Tsoumakas, Ioannis Katakis, and Ioannis Vlahavas.
+Random k-Labelsets for multilabel classification.
+\textit{IEEE Transactions on Knowledge and Data Engineering}, 23(7):1079--1089, 2011.
+\newline\texttt{https://doi.org/10.1109/TKDE.2010.164}
+
+\bibitem{zhang2014}
+Min-Ling Zhang and Zhi-Hua Zhou.
+A review on multi-label learning algorithms.
+\textit{IEEE Transactions on Knowledge and Data Engineering}, 26(8):1819--1837, 2014.
+\newline\texttt{https://doi.org/10.1109/TKDE.2013.39}
+
+\bibitem{vaswani2017}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin.
+Attention Is All You Need.
+In \textit{Advances in Neural Information Processing Systems 30}, 2017.
+\newline\texttt{https://arxiv.org/abs/1706.03762}
+
+\bibitem{devlin2019}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding.
+In \textit{Proceedings of NAACL-HLT}, 2019.
+\newline\texttt{https://aclanthology.org/N19-1423/}
+
+\bibitem{saito2015}
+Takaya Saito and Marc Rehmsmeier.
+The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets.
+\textit{PLOS ONE}, 10(3):e0118432, 2015.
+\newline\texttt{https://doi.org/10.1371/journal.pone.0118432}
+
+\bibitem{geifman2017}
+Yonatan Geifman and Ran El-Yaniv.
+Selective Classification for Deep Neural Networks.
+\textit{arXiv preprint arXiv:1705.08500}, 2017.
+\newline\texttt{https://arxiv.org/abs/1705.08500}
+
+\end{thebibliography}
+
+\clearpage
+\section*{Phá»¥ lá»¥c A: Sá»‘ liá»‡u tÃ¬nh cáº£m}
+\addcontentsline{toc}{section}{Phá»¥ lá»¥c A: HÃ¬nh káº¿t quáº£ cáº£m xÃºc}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/01_rating_distribution.png}}
+\caption{PhÃ¢n phá»‘i xáº¿p háº¡ng trong dá»¯ liá»‡u nguá»“n}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/06_f1_vs_k.png}}
+\caption{XÃ¡c thá»±c F1 báº±ng Chi-square top K}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/06_recall0_vs_k.png}}
+\caption{Thu há»“i xÃ¡c thá»±c cho lá»›p Ã¢m theo top K}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/06b_recall0_by_variant.png}}
+\caption{Kiá»ƒm tra viá»‡c thu há»“i lá»›p phá»§ Ä‘á»‹nh báº±ng biáº¿n thá»ƒ NLP cá»• Ä‘iá»ƒn}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/06b_precision0_by_variant.png}}
+\caption{Kiá»ƒm tra Ä‘á»™ chÃ­nh xÃ¡c cho lá»›p phá»§ Ä‘á»‹nh báº±ng biáº¿n thá»ƒ NLP cá»• Ä‘iá»ƒn}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/09_prob_hist_test_strong.png}}
+\caption{Biá»ƒu Ä‘á»“ xÃ¡c suáº¥t mÃ´ hÃ¬nh cá»• Ä‘iá»ƒn trÃªn táº­p kiá»ƒm tra máº¡nh}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/dm2_steps/10_threshold_tradeoff.png}}
+\caption{Sá»± Ä‘Ã¡nh Ä‘á»•i ngÆ°á»¡ng mÃ´ hÃ¬nh cá»• Ä‘iá»ƒn cho má»©c Ä‘á»™ phÃ¹ há»£p vÃ  thu há»“i}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/nlp_confusion_matrix.png}}
+\caption{Ma tráº­n nháº§m láº«n mÃ¡y biáº¿n Ã¡p trÃªn bá»™ thá»­ nghiá»‡m}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/nlp_prob_hist_test.png}}
+\caption{Biá»ƒu Ä‘á»“ xÃ¡c suáº¥t mÃ¡y biáº¿n Ã¡p trÃªn táº­p thá»­ nghiá»‡m}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/nlp_threshold_tradeoff.png}}
+\caption{Sá»± Ä‘Ã¡nh Ä‘á»•i ngÆ°á»¡ng mÃ¡y biáº¿n Ã¡p Ä‘á»ƒ phá»§ sÃ³ng vÃ  thu há»“i}
+\end{figure}
+
+\clearpage
+\section*{Phá»¥ lá»¥c B: Sá»‘ liá»‡u trÃ­ch xuáº¥t váº¥n Ä‘á»}
+\addcontentsline{toc}{section}{Phá»¥ lá»¥c B: HÃ¬nh káº¿t quáº£ trÃ­ch xuáº¥t váº¥n Ä‘á»}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/issue_steps/02_label_frequency.png}}
+\caption{Táº§n suáº¥t phÃ¡t hÃ nh nhÃ£n trong bá»™ chÃº thÃ­ch thá»§ cÃ´ng}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/issue_steps/02_per_label_f1.png}}
+\caption{Má»—i nhÃ£n F1 cho mÃ´ hÃ¬nh trÃ­ch xuáº¥t váº¥n Ä‘á» tá»«}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/issue_steps_char_demo/02_per_label_f1.png}}
+\caption{Má»—i nhÃ£n F1 cho mÃ´ hÃ¬nh trÃ­ch xuáº¥t váº¥n Ä‘á» tá»« cá»™ng vá»›i char}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/issue_transformer/nlp_issue_transformer_per_label_f1.png}}
+\caption{Per-label F1 cho mÃ´ hÃ¬nh issue transformer multi-label cáº¥p Ä‘á»™ level 4}
+\end{figure}
+
+\clearpage
+\section*{Phá»¥ lá»¥c C: Sá»‘ liá»‡u nÃ¢ng cáº¥p giÃ¡o trÃ¬nh}
+\addcontentsline{toc}{section}{Phá»¥ lá»¥c C: HÃ¬nh káº¿t quáº£ nÃ¢ng cáº¥p há»c pháº§n}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/syllabus_upgrade/nlp_syllabus_bench_recall0.png}}
+\caption{Nhá»› láº¡i bÃ i kiá»ƒm tra\_0 trÃªn cÃ¡c cÆ¡ sá»Ÿ giÃ¡o trÃ¬nh Ä‘Æ°á»£c bá»• sung}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/syllabus_upgrade/nlp_syllabus_bench_f2.png}}
+\caption{Kiá»ƒm tra F2\_0 trÃªn cÃ¡c cÆ¡ sá»Ÿ giÃ¡o trÃ¬nh bá»• sung}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{\detokenize{results/nlp_ext/syllabus_upgrade/nlp_ablation_f2.png}}
+\caption{K?t qu? ablation classic: F2\_0 tr?n t?p test theo t?ng bi?n th?}
+\end{figure}
+
+\end{document}
+
