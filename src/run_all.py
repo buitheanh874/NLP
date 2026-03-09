@@ -45,6 +45,20 @@ STEP_SEQUENCE = [
 ]
 
 
+def _parse_until_step(value: str) -> int:
+    raw = str(value).strip()
+    if not re.fullmatch(r"\d{1,2}", raw):
+        raise argparse.ArgumentTypeError(
+            f"Invalid until_step '{value}': expected an integer between 1 and 10."
+        )
+    step = int(raw)
+    if step < 1 or step > 10:
+        raise argparse.ArgumentTypeError(
+            f"Invalid until_step '{value}': expected an integer between 1 and 10."
+        )
+    return step
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run all NLP sentiment lab steps sequentially.")
     parser.add_argument(
@@ -105,14 +119,14 @@ def main():
     )
     parser.add_argument(
         "--until_step",
-        type=str,
-        default="10",
+        type=_parse_until_step,
+        default=10,
         help="Run through this step number (01-10).",
     )
     args = parser.parse_args()
     metadata_dir = Path(args.output_dir) / "_run_metadata"
     record = begin_run(
-        command_name=f"src.run_all.until_{args.until_step}",
+        command_name=f"src.run_all.until_{args.until_step:02d}",
         args=args,
         metadata_dir=metadata_dir,
     )
@@ -130,7 +144,7 @@ def main():
             thresholds=(args.threshold_low, args.threshold_high),
         )
 
-        target = int(args.until_step)
+        target = args.until_step
         ran_steps = []
         for name, func in STEP_SEQUENCE:
             token = name.split("_")[0]
