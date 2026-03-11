@@ -59,6 +59,20 @@ def _parse_until_step(value: str) -> int:
     return step
 
 
+def _parse_unit_interval(value: str) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            f"Invalid threshold '{value}': expected a float between 0 and 1."
+        )
+    if numeric < 0.0 or numeric > 1.0:
+        raise argparse.ArgumentTypeError(
+            f"Invalid threshold '{value}': expected a float between 0 and 1."
+        )
+    return numeric
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run all NLP sentiment lab steps sequentially.")
     parser.add_argument(
@@ -107,13 +121,13 @@ def main():
     )
     parser.add_argument(
         "--threshold_low",
-        type=float,
+        type=_parse_unit_interval,
         default=DEFAULT_THRESHOLDS[0],
         help="Lower probability threshold for Negative",
     )
     parser.add_argument(
         "--threshold_high",
-        type=float,
+        type=_parse_unit_interval,
         default=DEFAULT_THRESHOLDS[1],
         help="Upper probability threshold for Positive",
     )
@@ -124,6 +138,8 @@ def main():
         help="Run through this step number (01-10).",
     )
     args = parser.parse_args()
+    if args.threshold_low > args.threshold_high:
+        parser.error("--threshold_low must be <= --threshold_high.")
     metadata_dir = Path(args.output_dir) / "_run_metadata"
     record = begin_run(
         command_name=f"src.run_all.until_{args.until_step:02d}",
