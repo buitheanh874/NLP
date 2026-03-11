@@ -101,12 +101,34 @@ python demo_transformer.py "not bad at all"
 
 # UI demo (optional)
 streamlit run demo_app.py
+
+# FastAPI + Web UI (recommended)
+python -m uvicorn webapp.main:app --reload
+# then open http://127.0.0.1:8000
 ```
 
 Demo smoke inputs and expected behavior:
 
 - `docs/demo_inputs.txt`
 - `docs/expected_outputs.md`
+
+FastAPI endpoints:
+
+- `GET /api/health`
+- `GET /api/status?include_transformer=false`
+- `POST /api/predict`
+
+Example request body for `POST /api/predict`:
+
+```json
+{
+  "texts": [
+    "great product and fast shipping",
+    "terrible experience, support never replied"
+  ],
+  "include_transformer": false
+}
+```
 
 ## Rubric Alignment Artifacts
 

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Review Ops Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero reveal">
+      <p class="kicker">NLP Monitoring Layer</p>
+      <h1>Review Ops Console</h1>
+      <p class="subtitle">
+        FastAPI dashboard for batch review triage with classic sentiment + issue extraction
+        and optional transformer comparison.
+      </p>
+      <div id="status-grid" class="status-grid"></div>
+    </header>
+
+    <section class="panel reveal delay-1">
+      <div class="panel-head">
+        <h2>Analyze Reviews</h2>
+        <p>Enter one review per line. Use mixed/hard cases to stress-test thresholds.</p>
+      </div>
+
+      <textarea id="input-text" rows="8" aria-label="Input reviews"></textarea>
+
+      <div class="controls-row">
+        <label class="check">
+          <input type="checkbox" id="include-transformer" />
+          <span>Compare with transformer</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="show-non-positive-only" />
+          <span>Show only non-positive rows</span>
+        </label>
+        <div class="actions">
+          <button id="sample-btn" class="btn ghost" type="button">Load Sample</button>
+          <button id="clear-btn" class="btn ghost" type="button">Clear</button>
+          <button id="analyze-btn" class="btn primary" type="button">Analyze</button>
+        </div>
+      </div>
+      <p id="run-message" class="hint">System ready.</p>
+    </section>
+
+    <section id="summary-panel" class="panel reveal delay-2 hidden">
+      <div id="kpi-grid" class="kpi-grid"></div>
+    </section>
+
+    <section id="distribution-panel" class="panel reveal delay-2 hidden">
+      <div class="two-col">
+        <div>
+          <div class="panel-head tight">
+            <h2>Label Distribution</h2>
+            <p>Batch-level sentiment mix.</p>
+          </div>
+          <div id="distribution-bars" class="distribution-bars"></div>
+        </div>
+        <div>
+          <div class="panel-head tight">
+            <h2>Attention Queue</h2>
+            <p>Highest risk rows first.</p>
+          </div>
+          <div class="table-wrap small">
+            <table id="attention-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Risk</th>
+                  <th>P(+)</th>
+                  <th>Issue</th>
+                  <th>Text</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results-panel" class="panel reveal delay-3 hidden">
+      <div class="panel-head">
+        <h2>Predictions</h2>
+        <p>Classic prediction rows with optional transformer columns.</p>
+      </div>
+      <div class="toolbar">
+        <span id="mismatch-note" class="hint"></span>
+        <button id="export-btn" class="btn ghost" type="button">Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table id="results-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="issues-panel" class="panel reveal delay-3 hidden">
+      <div class="panel-head">
+        <h2>Issue Summary</h2>
+        <p>Aggregated learned issue labels in current batch.</p>
+      </div>
+      <div class="table-wrap small">
+        <table id="issues-table">
+          <thead>
+            <tr>
+              <th>Issue Label</th>
+              <th>Count</th>
+              <th>Avg Confidence</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
