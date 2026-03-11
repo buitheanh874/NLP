@@ -40,6 +40,9 @@ pre-commit install
 # 1) Classic sentiment end-to-end
 python -m src.run_all --data_path data/Gift_Cards.jsonl
 
+# 1b) Strongest classic sentiment setup (recommended for best classic metrics)
+python -m src.run_all --data_path data/Gift_Cards.jsonl --enable_abbrev_norm --enable_negation_tagging --enable_char_ngrams
+
 # 2) One sentiment step (legacy module name: dm2_steps)
 python -m src.dm2_steps 06b --data_path data/Gift_Cards.jsonl --enable_negation_tagging --enable_char_ngrams
 
@@ -48,6 +51,9 @@ python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path 
 
 # 3b) Level-3 issue training: per-label class-weight search + calibration + threshold tuning
 python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl --enable_char_ngrams --enable_chi2_topk --tune_thresholds --class_weight_search --calibrate_probs --calibration_method sigmoid --include_svm_baseline
+
+# 3c) One-flag max-performance issue training (auto-select best of LR/SVM/Blend)
+python -m src.issue_steps train --labels_path data/issue_labels.csv --data_path data/Gift_Cards.jsonl --max_performance
 
 # 4) Transformer fine-tuning (optional)
 python -m src.nlp_ext transformer_finetune --data_path data/Gift_Cards.jsonl
@@ -81,6 +87,12 @@ python -m src.nlp_ext eval_rigor --data_path data/Gift_Cards.jsonl --output_dir 
 
 # 13) Unified cross-task scoreboard
 python scripts/build_scoreboard.py
+
+# 14) Fair split comparison for Issue (classic vs transformer/hybrid)
+python scripts/build_issue_fair_comparison.py
+
+# 15) Rubric + syllabus fit assessment from current artifacts
+python scripts/build_rubric_syllabus_assessment.py
 ```
 
 Runtime note:
@@ -134,6 +146,8 @@ Example request body for `POST /api/predict`:
 
 - Rubric-to-evidence map: `docs/rubric_checklist.md`
 - Team process and cross-review matrix: `docs/contribution_matrix.md`
+- 10-minute presentation script: `docs/presentation_10min_script.md`
+- Demo runbook: `docs/demo_runbook.md`
 - PR quality gate template: `.github/pull_request_template.md`
 - Unified metrics table:
   - `results/scoreboard/model_scoreboard.csv`

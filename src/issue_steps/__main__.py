@@ -202,6 +202,16 @@ def main() -> None:
         help="Also train/evaluate OVR LinearSVM baseline",
     )
     train.add_argument(
+        "--enable_model_blend",
+        action="store_true",
+        help="Train LR+SVM score-level blend with per-label alpha tuning",
+    )
+    train.add_argument(
+        "--auto_select_best_model",
+        action="store_true",
+        help="Persist the best model variant by validation metrics (LR/SVM/Blend)",
+    )
+    train.add_argument(
         "--class_weight",
         type=str,
         choices=["balanced", "none"],
@@ -236,6 +246,14 @@ def main() -> None:
         type=int,
         default=SEED,
         help="Random seed for splits and model training",
+    )
+    train.add_argument(
+        "--max_performance",
+        action="store_true",
+        help=(
+            "Preset for strongest classic setup: enable char_ngrams, chi2, class_weight_search, "
+            "calibration, threshold_tuning, SVM baseline, LR+SVM blend, and auto model selection"
+        ),
     )
 
     predict = subparsers.add_parser(

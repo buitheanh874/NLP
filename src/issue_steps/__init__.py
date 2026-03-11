@@ -6,6 +6,7 @@ CLI:
 """
 
 from .common import (
+    BlendedOVRModel,
     DEFAULT_DATA_PATH,
     DEFAULT_MODEL_DIR,
     DEFAULT_RESULTS_DIR,
@@ -23,6 +24,7 @@ __all__ = [
     "DEFAULT_DATA_PATH",
     "DEFAULT_MODEL_DIR",
     "DEFAULT_RESULTS_DIR",
+    "BlendedOVRModel",
     "ISSUE_LABELS",
     "IssueInferenceBundle",
     "MultiLabelChi2Selector",

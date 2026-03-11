@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion
 
 from .common import (
+    BlendedOVRModel,
     DEFAULT_DATA_PATH,
     DEFAULT_MODEL_DIR,
     DEFAULT_RESULTS_DIR,
@@ -60,6 +61,7 @@ def _init_issue_vectorizer(enable_char_ngrams: bool, min_df: int = 2):
         lowercase=False,
         tokenizer=str.split,
         preprocessor=None,
+        token_pattern=None,
     )
     if not enable_char_ngrams:
         return word_tfidf
@@ -971,6 +973,136 @@ def _select_labelwise_class_weights(
     return selected_value_map, selected_label_map, tuning_df
 
 
+def _tune_blend_weights_per_label(
+    y_true: np.ndarray,
+    primary_scores: np.ndarray,
+    secondary_scores: np.ndarray,
+    step: float = 0.1,
+) -> Tuple[Dict[str, float], pd.DataFrame]:
+    if primary_scores.shape != secondary_scores.shape:
+        raise ValueError(
+            "Cannot tune blend weights with mismatched score matrices: "
+            f"{primary_scores.shape} vs {secondary_scores.shape}"
+        )
+
+    grid = np.arange(0.0, 1.0 + 1e-9, float(step))
+    rows: List[Dict[str, object]] = []
+    selected: Dict[str, float] = {}
+
+    for idx, label in enumerate(ISSUE_LABELS):
+        y_col = y_true[:, idx]
+        if np.unique(y_col).size < 2:
+            selected[label] = 1.0
+            rows.append(
+                {
+                    "label": label,
+                    "alpha_lr": 1.0,
+                    "precision_1": np.nan,
+                    "recall_1": np.nan,
+                    "f1_1": np.nan,
+                    "f2_1": np.nan,
+                    "selected": 1,
+                    "note": "insufficient_label_support",
+                }
+            )
+            continue
+
+        best_key = None
+        best_alpha = 0.5
+        for alpha in grid:
+            blended = alpha * primary_scores[:, idx] + (1.0 - alpha) * secondary_scores[:, idx]
+            metrics = _binary_positive_metrics(y_col, blended, threshold=0.5)
+            cand_key = (
+                metrics["f2_1"],
+                metrics["recall_1"],
+                metrics["precision_1"],
+                -abs(float(alpha) - 0.5),
+            )
+            rows.append(
+                {
+                    "label": label,
+                    "alpha_lr": float(alpha),
+                    **metrics,
+                    "selected": 0,
+                    "note": "",
+                }
+            )
+            if best_key is None or cand_key > best_key:
+                best_key = cand_key
+                best_alpha = float(alpha)
+        selected[label] = best_alpha
+
+    tuning_df = pd.DataFrame(rows)
+    if not tuning_df.empty:
+        selected_keys = {(label, float(alpha)) for label, alpha in selected.items()}
+        tuning_df["selected"] = tuning_df.apply(
+            lambda row: 1 if (str(row["label"]), float(row["alpha_lr"])) in selected_keys else 0,
+            axis=1,
+        )
+    return selected, tuning_df
+
+
+def _blend_scores(
+    primary_scores: np.ndarray,
+    secondary_scores: np.ndarray,
+    alpha_map: Dict[str, float],
+) -> np.ndarray:
+    alpha_vec = np.array([float(alpha_map.get(label, 0.5)) for label in ISSUE_LABELS], dtype=float)
+    return alpha_vec.reshape(1, -1) * primary_scores + (1.0 - alpha_vec.reshape(1, -1)) * secondary_scores
+
+
+def _dummy_labelset_majority_predict(y_train: np.ndarray, n_samples: int) -> np.ndarray:
+    if y_train.ndim != 2 or y_train.shape[1] != len(ISSUE_LABELS):
+        raise ValueError("Expected y_train shape (n_samples, n_labels) for dummy baseline.")
+    codes = pd.Series(_labelset_codes(y_train))
+    if codes.empty:
+        return np.zeros((n_samples, len(ISSUE_LABELS)), dtype=int)
+    top_code = str(codes.value_counts().idxmax())
+    if top_code == "none":
+        vector = np.zeros(len(ISSUE_LABELS), dtype=int)
+    else:
+        active = set(top_code.split("|"))
+        vector = np.array([1 if label in active else 0 for label in ISSUE_LABELS], dtype=int)
+    return np.tile(vector.reshape(1, -1), (int(n_samples), 1))
+
+
+def _dummy_label_prior_predict(y_train: np.ndarray, n_samples: int) -> np.ndarray:
+    if y_train.ndim != 2 or y_train.shape[1] != len(ISSUE_LABELS):
+        raise ValueError("Expected y_train shape (n_samples, n_labels) for dummy baseline.")
+    priors = y_train.mean(axis=0)
+    vector = (priors >= 0.5).astype(int)
+    if int(vector.sum()) == 0 and len(vector) > 0:
+        vector[int(np.argmax(priors))] = 1
+    return np.tile(vector.reshape(1, -1), (int(n_samples), 1))
+
+
+def _select_best_model_name(overall_rows: List[Dict[str, object]]) -> str:
+    if not overall_rows:
+        return "ovr_logreg"
+    overall_df = pd.DataFrame(overall_rows)
+    if overall_df.empty or "split" not in overall_df.columns:
+        return "ovr_logreg"
+    val_df = overall_df[overall_df["split"] == "val"].copy()
+    if val_df.empty:
+        return "ovr_logreg"
+
+    priority = {
+        "ovr_blend_lr_svm": 0,
+        "ovr_logreg": 1,
+        "ovr_linearsvm": 2,
+    }
+    val_df = val_df[val_df["model"].isin(priority.keys())].copy()
+    if val_df.empty:
+        return "ovr_logreg"
+    val_df["model_priority"] = val_df["model"].map(priority).fillna(99).astype(int)
+    best_row = val_df.sort_values(
+        by=["micro_f1", "macro_f1", "subset_accuracy", "model_priority"],
+        ascending=[False, False, False, True],
+        kind="mergesort",
+    ).iloc[0]
+    return str(best_row["model"])
+
+
 def _threshold_stability_rows(
     y_true: np.ndarray,
     scores: np.ndarray,
@@ -1149,6 +1281,22 @@ def _prepare_labeled_dataframe(labels_path: Path, data_path: Path) -> pd.DataFra
 
 
 def cmd_train(args) -> None:
+    if bool(getattr(args, "max_performance", False)):
+        args.enable_char_ngrams = True
+        args.enable_chi2_topk = True
+        args.tune_thresholds = True
+        args.class_weight_search = True
+        args.calibrate_probs = True
+        args.include_svm_baseline = True
+        args.enable_model_blend = True
+        args.auto_select_best_model = True
+        if str(getattr(args, "class_weight", "balanced")) not in CLASS_WEIGHT_OPTIONS:
+            args.class_weight = "balanced"
+        print(
+            "[train] max_performance preset enabled: "
+            "char_ngrams+chi2+class_weight_search+calibration+threshold_tuning+svm+blend+auto_select"
+        )
+
     df = _prepare_labeled_dataframe(args.labels_path, args.data_path)
     schema_errors = _schema_errors(df)
     if schema_errors:
@@ -1342,18 +1490,36 @@ def cmd_train(args) -> None:
             )
         )
 
-    overall_rows = []
-    per_label_frames = []
-    for split_name, y_true, y_pred in [
+    overall_rows: List[Dict[str, object]] = []
+    per_label_frames: List[pd.DataFrame] = []
+    thresholds_by_model: Dict[str, Dict[str, float]] = {
+        "ovr_logreg": {label: float(thresholds_lr[label]) for label in ISSUE_LABELS}
+    }
+    predictions_by_model: Dict[str, Dict[str, np.ndarray]] = {
+        "ovr_logreg": {"val": lr_val_pred, "test": lr_test_pred}
+    }
+    scores_by_model: Dict[str, Dict[str, np.ndarray]] = {
+        "ovr_logreg": {"val": lr_val_scores, "test": lr_test_scores}
+    }
+    model_objects: Dict[str, object] = {"ovr_logreg": lr_model}
+    model_notes: Dict[str, Dict[str, str]] = {"ovr_logreg": lr_model.train_notes}
+    blend_tuning_df = pd.DataFrame()
+    blend_weight_map: Dict[str, float] = {}
+
+    for split_name, y_true_split, y_pred_split in [
         ("val", y_val, lr_val_pred),
         ("test", y_test, lr_test_pred),
     ]:
         row = {"model": "ovr_logreg", "split": split_name}
-        row.update(_overall_metrics(y_true, y_pred))
+        row.update(_overall_metrics(y_true_split, y_pred_split))
         overall_rows.append(row)
-        per_label_frames.append(_per_label_metrics(y_true, y_pred, "ovr_logreg", split_name))
+        per_label_frames.append(_per_label_metrics(y_true_split, y_pred_split, "ovr_logreg", split_name))
 
-    if args.include_svm_baseline:
+    need_svm = bool(args.include_svm_baseline or getattr(args, "enable_model_blend", False))
+    svm_model = None
+    svm_val_scores = None
+    svm_test_scores = None
+    if need_svm:
         svm_model = train_per_label_ovr(
             X_train_model,
             y_train,
@@ -1372,14 +1538,134 @@ def cmd_train(args) -> None:
         svm_val_pred = _apply_thresholds(svm_val_scores, thresholds_svm)
         svm_test_pred = _apply_thresholds(svm_test_scores, thresholds_svm)
 
-        for split_name, y_true, y_pred in [
+        thresholds_by_model["ovr_linearsvm"] = {
+            label: float(thresholds_svm[label]) for label in ISSUE_LABELS
+        }
+        predictions_by_model["ovr_linearsvm"] = {"val": svm_val_pred, "test": svm_test_pred}
+        scores_by_model["ovr_linearsvm"] = {"val": svm_val_scores, "test": svm_test_scores}
+        model_objects["ovr_linearsvm"] = svm_model
+        model_notes["ovr_linearsvm"] = svm_model.train_notes
+
+        for split_name, y_true_split, y_pred_split in [
             ("val", y_val, svm_val_pred),
             ("test", y_test, svm_test_pred),
         ]:
             row = {"model": "ovr_linearsvm", "split": split_name}
-            row.update(_overall_metrics(y_true, y_pred))
+            row.update(_overall_metrics(y_true_split, y_pred_split))
             overall_rows.append(row)
-            per_label_frames.append(_per_label_metrics(y_true, y_pred, "ovr_linearsvm", split_name))
+            per_label_frames.append(_per_label_metrics(y_true_split, y_pred_split, "ovr_linearsvm", split_name))
+
+    if bool(getattr(args, "enable_model_blend", False)) and svm_model is not None:
+        blend_weight_map, blend_tuning_df = _tune_blend_weights_per_label(
+            y_true=y_val,
+            primary_scores=lr_val_scores,
+            secondary_scores=svm_val_scores,
+            step=0.1,
+        )
+        blend_val_scores = _blend_scores(lr_val_scores, svm_val_scores, blend_weight_map)
+        blend_test_scores = _blend_scores(lr_test_scores, svm_test_scores, blend_weight_map)
+        thresholds_blend = {label: 0.5 for label in ISSUE_LABELS}
+        if args.tune_thresholds:
+            thresholds_blend = _tune_thresholds(y_val, blend_val_scores)
+        blend_val_pred = _apply_thresholds(blend_val_scores, thresholds_blend)
+        blend_test_pred = _apply_thresholds(blend_test_scores, thresholds_blend)
+
+        blend_note_map = {
+            label: f"blend_alpha_lr={float(blend_weight_map.get(label, 0.5)):.2f}"
+            for label in ISSUE_LABELS
+        }
+        blend_note_map.update(
+            {
+                "__primary_model": "ovr_logreg",
+                "__secondary_model": "ovr_linearsvm",
+            }
+        )
+        blend_model = BlendedOVRModel(
+            primary_model=lr_model,
+            secondary_model=svm_model,
+            label_names=list(ISSUE_LABELS),
+            blend_weights={label: float(blend_weight_map.get(label, 0.5)) for label in ISSUE_LABELS},
+            train_notes=blend_note_map,
+        )
+
+        thresholds_by_model["ovr_blend_lr_svm"] = {
+            label: float(thresholds_blend[label]) for label in ISSUE_LABELS
+        }
+        predictions_by_model["ovr_blend_lr_svm"] = {
+            "val": blend_val_pred,
+            "test": blend_test_pred,
+        }
+        scores_by_model["ovr_blend_lr_svm"] = {
+            "val": blend_val_scores,
+            "test": blend_test_scores,
+        }
+        model_objects["ovr_blend_lr_svm"] = blend_model
+        model_notes["ovr_blend_lr_svm"] = blend_note_map
+
+        stability_frames.append(
+            _threshold_stability_rows(
+                y_true=y_val,
+                scores=blend_val_scores,
+                thresholds=thresholds_blend,
+                model_variant="blend_lr_svm",
+                split="val",
+            )
+        )
+        stability_frames.append(
+            _threshold_stability_rows(
+                y_true=y_test,
+                scores=blend_test_scores,
+                thresholds=thresholds_blend,
+                model_variant="blend_lr_svm",
+                split="test",
+            )
+        )
+
+        for split_name, y_true_split, y_pred_split in [
+            ("val", y_val, blend_val_pred),
+            ("test", y_test, blend_test_pred),
+        ]:
+            row = {"model": "ovr_blend_lr_svm", "split": split_name}
+            row.update(_overall_metrics(y_true_split, y_pred_split))
+            overall_rows.append(row)
+            per_label_frames.append(_per_label_metrics(y_true_split, y_pred_split, "ovr_blend_lr_svm", split_name))
+
+    dummy_majority_val = _dummy_labelset_majority_predict(y_train, n_samples=len(y_val))
+    dummy_majority_test = _dummy_labelset_majority_predict(y_train, n_samples=len(y_test))
+    for split_name, y_true_split, y_pred_split in [
+        ("val", y_val, dummy_majority_val),
+        ("test", y_test, dummy_majority_test),
+    ]:
+        row = {"model": "dummy_labelset_majority", "split": split_name}
+        row.update(_overall_metrics(y_true_split, y_pred_split))
+        overall_rows.append(row)
+        per_label_frames.append(
+            _per_label_metrics(y_true_split, y_pred_split, "dummy_labelset_majority", split_name)
+        )
+
+    dummy_prior_val = _dummy_label_prior_predict(y_train, n_samples=len(y_val))
+    dummy_prior_test = _dummy_label_prior_predict(y_train, n_samples=len(y_test))
+    for split_name, y_true_split, y_pred_split in [
+        ("val", y_val, dummy_prior_val),
+        ("test", y_test, dummy_prior_test),
+    ]:
+        row = {"model": "dummy_label_prior", "split": split_name}
+        row.update(_overall_metrics(y_true_split, y_pred_split))
+        overall_rows.append(row)
+        per_label_frames.append(
+            _per_label_metrics(y_true_split, y_pred_split, "dummy_label_prior", split_name)
+        )
+
+    selected_model_name = "ovr_logreg"
+    if bool(getattr(args, "auto_select_best_model", False)):
+        selected_model_name = _select_best_model_name(overall_rows)
+    if selected_model_name not in model_objects:
+        selected_model_name = "ovr_logreg"
+
+    selected_model = model_objects[selected_model_name]
+    selected_thresholds = thresholds_by_model[selected_model_name]
+    selected_test_pred = predictions_by_model[selected_model_name]["test"]
+    selected_test_scores = scores_by_model[selected_model_name]["test"]
 
     out_dir = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1391,32 +1677,49 @@ def cmd_train(args) -> None:
 
     if not class_weight_tuning_df.empty:
         class_weight_tuning_df.to_csv(out_dir / "02_class_weight_tuning.csv", index=False)
+    if not blend_tuning_df.empty:
+        blend_tuning_df.to_csv(out_dir / "02_blend_weight_tuning.csv", index=False)
 
     stability_df = pd.concat(stability_frames, ignore_index=True) if stability_frames else pd.DataFrame()
     if not stability_df.empty:
         stability_df.to_csv(out_dir / "02_threshold_stability.csv", index=False)
         _write_stability_summary(out_dir / "02_threshold_stability_summary.md", stability_df)
 
-    confusion_md = _build_confusion_like_summary(test_df, y_test, lr_test_pred, lr_test_scores)
+    confusion_md = _build_confusion_like_summary(test_df, y_test, selected_test_pred, selected_test_scores)
     (out_dir / "02_confusion_like_summary.md").write_text(confusion_md, encoding="utf-8")
 
     if args.tune_thresholds:
-        threshold_df = pd.DataFrame(
-            {"label": ISSUE_LABELS, "threshold": [float(thresholds_lr[label]) for label in ISSUE_LABELS]}
-        )
+        threshold_rows: List[Dict[str, object]] = []
+        for model_name, threshold_map in thresholds_by_model.items():
+            for label in ISSUE_LABELS:
+                threshold_rows.append(
+                    {
+                        "model": model_name,
+                        "label": label,
+                        "threshold": float(threshold_map[label]),
+                    }
+                )
+        threshold_df = pd.DataFrame(threshold_rows)
         threshold_df.to_csv(out_dir / "02_label_thresholds.csv", index=False)
 
-    test_label_f1 = (
-        per_label_df[(per_label_df["model"] == "ovr_logreg") & (per_label_df["split"] == "test")]
-        .set_index("label")
-        .loc[ISSUE_LABELS]["f1"]
-    )
+    plot_model_name = selected_model_name
+    selected_label_frame = per_label_df[
+        (per_label_df["model"] == plot_model_name) & (per_label_df["split"] == "test")
+    ]
+    if selected_label_frame.empty:
+        plot_model_name = "ovr_logreg"
+        selected_label_frame = per_label_df[
+            (per_label_df["model"] == plot_model_name) & (per_label_df["split"] == "test")
+        ]
+    if selected_label_frame.empty:
+        selected_label_frame = pd.DataFrame({"label": ISSUE_LABELS, "f1": [0.0] * len(ISSUE_LABELS)})
+    test_label_f1 = selected_label_frame.set_index("label").loc[ISSUE_LABELS]["f1"]
     plt.figure(figsize=(10, 4))
     plt.bar(ISSUE_LABELS, test_label_f1.values, color="#1f77b4")
     plt.xticks(rotation=30, ha="right")
     plt.ylim(0.0, 1.0)
     plt.ylabel("F1")
-    plt.title("Per-label F1 (test, OVR Logistic Regression)")
+    plt.title(f"Per-label F1 (test, {plot_model_name})")
     plt.tight_layout()
     plt.savefig(out_dir / "02_per_label_f1.png", dpi=220)
     plt.close()
@@ -1454,6 +1757,12 @@ def cmd_train(args) -> None:
         "calibration_cv": int(getattr(args, "calibration_cv", 3)),
         "tune_thresholds": bool(args.tune_thresholds),
         "include_svm_baseline": bool(args.include_svm_baseline),
+        "include_dummy_baselines": True,
+        "enable_model_blend": bool(getattr(args, "enable_model_blend", False)),
+        "auto_select_best_model": bool(getattr(args, "auto_select_best_model", False)),
+        "selected_model_name": selected_model_name,
+        "selected_thresholds": selected_thresholds,
+        "blend_weights": blend_weight_map,
         "label_list": ISSUE_LABELS,
         "cleaning": cleaning_cfg,
         "dropped_rows": {
@@ -1463,7 +1772,7 @@ def cmd_train(args) -> None:
         "warnings": {
             "other_with_other_labels": contradiction_count,
         },
-        "model_notes": lr_model.train_notes,
+        "model_notes": model_notes,
     }
     (out_dir / "02_train_config.json").write_text(json.dumps(train_config, indent=2), encoding="utf-8")
 
@@ -1475,9 +1784,16 @@ def cmd_train(args) -> None:
         joblib.dump(selector, selector_path)
     elif selector_path.exists():
         selector_path.unlink()
-    joblib.dump(lr_model, model_dir / "ovr_model.joblib")
+    joblib.dump(selected_model, model_dir / "ovr_model.joblib")
     (model_dir / "thresholds.json").write_text(
-        json.dumps({"thresholds": thresholds_lr, "cleaning": cleaning_cfg}, indent=2),
+        json.dumps(
+            {
+                "thresholds": selected_thresholds,
+                "cleaning": cleaning_cfg,
+                "selected_model_name": selected_model_name,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     (model_dir / "label_list.json").write_text(json.dumps(ISSUE_LABELS, indent=2), encoding="utf-8")

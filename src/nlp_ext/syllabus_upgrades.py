@@ -207,7 +207,12 @@ def run_classic_syllabus_bench(args) -> None:
         "perceptron": Perceptron(
             max_iter=25, class_weight="balanced", random_state=SEED, tol=1e-3
         ),
-        "linear_svm": LinearSVC(class_weight="balanced", random_state=SEED),
+        "linear_svm": LinearSVC(
+            class_weight="balanced",
+            random_state=SEED,
+            dual="auto",
+            max_iter=5000,
+        ),
         "sgd_log_loss": SGDClassifier(
             loss="log_loss",
             max_iter=35,
@@ -845,7 +850,12 @@ def run_eval_rigor(args) -> None:
 
     baseline_models = {
         "multinomial_nb": MultinomialNB(alpha=0.3),
-        "linear_svm": LinearSVC(class_weight="balanced", random_state=SEED, max_iter=4000),
+        "linear_svm": LinearSVC(
+            class_weight="balanced",
+            random_state=SEED,
+            dual="auto",
+            max_iter=5000,
+        ),
     }
     predictions = {
         "classic_main": {

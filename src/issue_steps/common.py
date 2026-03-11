@@ -287,6 +287,47 @@ class PerLabelOVRModel:
         return (scores >= thr_vec).astype(int)
 
 
+@dataclass
+class BlendedOVRModel:
+    """
+    Score-level blend of two OVR-style models.
+    final_score = alpha * primary + (1 - alpha) * secondary
+    where alpha is tuned per label on validation split.
+    """
+
+    primary_model: Any
+    secondary_model: Any
+    label_names: List[str]
+    blend_weights: Dict[str, float]
+    train_notes: Dict[str, str]
+    model_kind: str = "blended_ovr"
+
+    def _alpha_vector(self) -> np.ndarray:
+        return np.array(
+            [float(self.blend_weights.get(label, 0.5)) for label in self.label_names],
+            dtype=float,
+        )
+
+    def predict_scores(self, X) -> np.ndarray:
+        primary_scores = np.asarray(self.primary_model.predict_scores(X), dtype=float)
+        secondary_scores = np.asarray(self.secondary_model.predict_scores(X), dtype=float)
+        if primary_scores.shape != secondary_scores.shape:
+            raise ValueError(
+                "Primary and secondary model score shapes must match for blending: "
+                f"{primary_scores.shape} vs {secondary_scores.shape}"
+            )
+        alpha = self._alpha_vector().reshape(1, -1)
+        return alpha * primary_scores + (1.0 - alpha) * secondary_scores
+
+    def predict_binary(self, X, thresholds: Dict[str, float]) -> np.ndarray:
+        scores = self.predict_scores(X)
+        thr_vec = np.array(
+            [float(thresholds.get(label, 0.5)) for label in self.label_names],
+            dtype=float,
+        )
+        return (scores >= thr_vec).astype(int)
+
+
 def _build_base_estimator(
     model_kind: str = "logreg",
     class_weight: Optional[object] = "balanced",
@@ -305,6 +346,8 @@ def _build_base_estimator(
         return LinearSVC(
             class_weight=class_weight,
             random_state=random_state,
+            dual="auto",
+            max_iter=5000,
         )
     raise ValueError(f"Unsupported model_kind: {model_kind}")
 

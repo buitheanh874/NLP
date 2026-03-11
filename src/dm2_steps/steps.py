@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.dummy import DummyClassifier
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.metrics import confusion_matrix
 from scipy.sparse import vstack
@@ -266,16 +267,55 @@ def step04_tfidf_stats(config: DM2Config) -> None:
         "test_avg_nnz": float(np.mean(nnz_test)),
     }
 
-    top_tokens = []
-    if hasattr(vec_bundle.vectorizer, "get_feature_names_out"):
-        tokens = vec_bundle.vectorizer.get_feature_names_out()
-        # Some FeatureUnion transformers do not expose idf directly; guard.
-        idf_vals = getattr(vec_bundle.vectorizer, "idf_", np.ones(len(tokens)))
-        top_tokens = (
-            pd.DataFrame({"token": tokens, "idf": idf_vals})
-            .sort_values(by="idf", ascending=False)
-            .head(20)
-        ).to_dict(orient="records")
+    top_token_rows = []
+
+    def _append_top_tokens(prefix: str, tfidf_obj, top_n: int = 20) -> None:
+        if not hasattr(tfidf_obj, "get_feature_names_out"):
+            return
+        try:
+            tokens = tfidf_obj.get_feature_names_out()
+        except Exception:
+            return
+        if len(tokens) == 0:
+            return
+        idf_vals = np.asarray(
+            getattr(tfidf_obj, "idf_", np.ones(len(tokens), dtype=float)),
+            dtype=float,
+        )
+        if idf_vals.shape[0] != len(tokens):
+            idf_vals = np.ones(len(tokens), dtype=float)
+        top_k = min(int(top_n), len(tokens))
+        ranked_idx = np.argsort(-idf_vals)[:top_k]
+        for idx in ranked_idx:
+            top_token_rows.append(
+                {
+                    "token": f"{prefix}{tokens[idx]}",
+                    "idf": float(idf_vals[idx]),
+                }
+            )
+
+    if hasattr(vec_bundle.vectorizer, "transformer_list"):
+        for comp_name, transformer in vec_bundle.vectorizer.transformer_list:
+            if hasattr(transformer, "named_steps"):
+                for key in ["tfidf", "tfidf_left", "tfidf_right", "tfidf_char"]:
+                    if key in transformer.named_steps:
+                        _append_top_tokens(
+                            prefix=f"{comp_name}/{key}::",
+                            tfidf_obj=transformer.named_steps[key],
+                        )
+            else:
+                _append_top_tokens(prefix=f"{comp_name}::", tfidf_obj=transformer)
+    else:
+        _append_top_tokens(prefix="", tfidf_obj=vec_bundle.vectorizer)
+
+    top_tokens = (
+        pd.DataFrame(top_token_rows)
+        .sort_values(by="idf", ascending=False)
+        .head(20)
+        .to_dict(orient="records")
+        if top_token_rows
+        else []
+    )
 
     payload = {
         "variant": variant.name,
@@ -816,6 +856,56 @@ def step08_ensemble(config: DM2Config) -> None:
             best_rf_metrics = metrics
             best_rf_probs = probs
 
+    for dummy_name, strategy in [
+        ("dummy_most_frequent", "most_frequent"),
+        ("dummy_stratified", "stratified"),
+    ]:
+        dummy = DummyClassifier(strategy=strategy, random_state=SEED)
+        dummy.fit(X_train_sel, y_train)
+        probs_2d = dummy.predict_proba(X_test_sel)
+        classes = list(getattr(dummy, "classes_", []))
+        if 1 in classes:
+            pos_idx = classes.index(1)
+            probs = probs_2d[:, pos_idx]
+        else:
+            probs = np.zeros(X_test_sel.shape[0], dtype=float)
+        metrics = metrics_from_probs(y_test, probs, threshold=0.5)
+        rows.append(
+            {
+                "model": dummy_name,
+                "class_weight": "none",
+                "k": best_k,
+                **metrics,
+            }
+        )
+
+    # Include strongest LR reference so downstream scoreboards can compare against
+    # the best context-aware linear model, not only tree ensembles.
+    (
+        best_lr_splits,
+        best_lr_vec_bundle,
+        best_lr_selector,
+        best_lr_model,
+        best_lr_k,
+        best_lr_cw,
+        best_lr_spec,
+    ) = _train_best_variant_lr(config)
+    best_lr_probs = best_lr_model.predict_proba(
+        best_lr_selector.transform(best_lr_vec_bundle.X_test)
+    )[:, 1]
+    best_lr_metrics = metrics_from_probs(
+        best_lr_splits.test["label"].values, best_lr_probs, threshold=0.5
+    )
+    rows.append(
+        {
+            "model": "logreg_best_variant",
+            "variant": best_lr_spec.name,
+            "class_weight": best_lr_cw,
+            "k": best_lr_k,
+            **best_lr_metrics,
+        }
+    )
+
     pd.DataFrame(rows).to_csv(out_dir / "08_ensemble_metrics.csv", index=False)
 
     if best_rf_probs is not None:
@@ -842,7 +932,7 @@ def step08_ensemble(config: DM2Config) -> None:
     lines = [
         "# Step 08 · Ensemble DT/RF",
         f"- Using Chi2 K*={best_k} (class_weight* from LR: {best_cw}).",
-        "- Decision Tree and Random Forest trained on selected features; metrics in 08_ensemble_metrics.csv.",
+        "- Decision Tree/Random Forest, dummy baselines, and strongest LR reference saved in 08_ensemble_metrics.csv.",
         "- RF confusion matrix saved to 08_confusion_matrix_rf.png.",
         "- Fallback stats (empty/sparse cases) saved to 08_fallback_stats.csv.",
     ]

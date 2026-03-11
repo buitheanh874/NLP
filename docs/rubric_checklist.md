@@ -7,6 +7,8 @@ This file maps grading criteria to concrete, reproducible project evidence.
 - Reproducible commands: [`README.md`](/d:/Code/NLP_code/README.md)
 - End-to-end runner: [`src/run_all.py`](/d:/Code/NLP_code/src/run_all.py)
 - Demo commands: [`demo.py`](/d:/Code/NLP_code/demo.py), [`demo_transformer.py`](/d:/Code/NLP_code/demo_transformer.py), [`demo_app.py`](/d:/Code/NLP_code/demo_app.py)
+- Presentation script: [`docs/presentation_10min_script.md`](/d:/Code/NLP_code/docs/presentation_10min_script.md)
+- Demo runbook: [`docs/demo_runbook.md`](/d:/Code/NLP_code/docs/demo_runbook.md)
 - Unified metrics table: `python scripts/build_scoreboard.py`
 
 ## 2) Project Significance
@@ -40,6 +42,11 @@ This file maps grading criteria to concrete, reproducible project evidence.
 - Unified scoreboard output:
   - [`results/scoreboard/model_scoreboard.csv`](/d:/Code/NLP_code/results/scoreboard/model_scoreboard.csv)
   - [`results/scoreboard/model_scoreboard.md`](/d:/Code/NLP_code/results/scoreboard/model_scoreboard.md)
+- Fair issue comparison (same split classic vs transformer/hybrid):
+  - [`results/scoreboard/issue_fair_comparison.csv`](/d:/Code/NLP_code/results/scoreboard/issue_fair_comparison.csv)
+  - [`results/scoreboard/issue_fair_comparison.md`](/d:/Code/NLP_code/results/scoreboard/issue_fair_comparison.md)
+- Rubric + syllabus self-assessment:
+  - [`results/scoreboard/rubric_syllabus_assessment.md`](/d:/Code/NLP_code/results/scoreboard/rubric_syllabus_assessment.md)
 
 ## 5) Demo Quality
 

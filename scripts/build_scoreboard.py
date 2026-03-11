@@ -97,6 +97,26 @@ def build_scoreboard() -> pd.DataFrame:
                 )
             )
 
+    issue_fair_path = RESULTS_DIR / "nlp_ext" / "issue_transformer" / "nlp_issue_hybrid_metrics.csv"
+    issue_fair_df = _safe_read_csv(issue_fair_path)
+    if not issue_fair_df.empty:
+        issue_fair_test = (
+            issue_fair_df[issue_fair_df["split"] == "test"]
+            if "split" in issue_fair_df.columns
+            else issue_fair_df
+        )
+        for rec in issue_fair_test.to_dict(orient="records"):
+            rows.append(
+                _row(
+                    task="issue_multilabel_fair_split",
+                    model=str(rec.get("model", "unknown_issue_model")),
+                    split=str(rec.get("split", "test")),
+                    micro_f1=_as_float(rec, "micro_f1"),
+                    macro_f1=_as_float(rec, "macro_f1"),
+                    source_file=str(issue_fair_path.relative_to(ROOT)),
+                )
+            )
+
     tf_path = RESULTS_DIR / "nlp_ext" / "nlp_metrics.csv"
     tf_df = _safe_read_csv(tf_path)
     if not tf_df.empty:

@@ -244,6 +244,7 @@ def build_word_vectorizer(ngram_range: Tuple[int, int]) -> TfidfVectorizer:
         lowercase=False,  # already cleaned
         preprocessor=None,
         tokenizer=str.split,
+        token_pattern=None,
     )
 
 
