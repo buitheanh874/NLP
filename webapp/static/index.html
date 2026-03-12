@@ -1,129 +1,229 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Review Ops Console</title>
+  <title>NLP Review Ops</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260312m" />
 </head>
 <body>
-  <div class="app-shell">
-    <header class="hero reveal">
-      <p class="kicker">NLP Monitoring Layer</p>
-      <h1>Review Ops Console</h1>
-      <p class="subtitle">
-        FastAPI dashboard for batch review triage with classic sentiment + issue extraction
-        and optional transformer comparison.
-      </p>
-      <div id="status-grid" class="status-grid"></div>
-    </header>
-
-    <section class="panel reveal delay-1">
-      <div class="panel-head">
-        <h2>Analyze Reviews</h2>
-        <p>Enter one review per line. Use mixed/hard cases to stress-test thresholds.</p>
+  <header class="site-header">
+    <div class="header-top">
+      <div class="logo-block">
+        <div class="logo-mark">nlp<span>shop</span></div>
+        <div class="logo-sub">clone layout</div>
       </div>
 
-      <textarea id="input-text" rows="8" aria-label="Input reviews"></textarea>
+      <div class="ship-block">
+        <span class="ship-label">Deliver to</span>
+        <span class="ship-value">NLP Team</span>
+      </div>
 
-      <div class="controls-row">
-        <label class="check">
-          <input type="checkbox" id="include-transformer" />
-          <span>Compare with transformer</span>
-        </label>
-        <label class="check">
-          <input type="checkbox" id="show-non-positive-only" />
-          <span>Show only non-positive rows</span>
-        </label>
-        <div class="actions">
-          <button id="sample-btn" class="btn ghost" type="button">Load Sample</button>
-          <button id="clear-btn" class="btn ghost" type="button">Clear</button>
-          <button id="analyze-btn" class="btn primary" type="button">Analyze</button>
+      <div class="search-block">
+        <select aria-label="Search category">
+          <option>All</option>
+          <option>Sentiment</option>
+          <option>Issue Labels</option>
+          <option>Transformer</option>
+        </select>
+        <input type="text" value="Search review analytics dashboard" readonly />
+        <button type="button" aria-label="Search">Go</button>
+      </div>
+
+      <div class="header-actions">
+        <div class="action-tile">
+          <span class="small">Hello, Team</span>
+          <span class="large">Account & Lists</span>
+        </div>
+        <div class="action-tile">
+          <span class="small">Returns</span>
+          <span class="large">& Orders</span>
+        </div>
+        <div class="cart-tile">
+          <span class="cart-icon">Cart</span>
+          <span>Cart</span>
         </div>
       </div>
-      <p id="run-message" class="hint">System ready.</p>
-    </section>
+    </div>
 
-    <section id="summary-panel" class="panel reveal delay-2 hidden">
-      <div id="kpi-grid" class="kpi-grid"></div>
-    </section>
+    <nav class="header-sub">
+      <a href="#">All</a>
+      <a href="#">Today's Deals</a>
+      <a href="#">Gift Cards</a>
+      <a href="#">Registry</a>
+      <a href="#">Prime Video</a>
+      <a href="#">Customer Service</a>
+      <a href="#">Categories</a>
+      <a href="#">Best Sellers</a>
+      <a href="#">Memberships</a>
+    </nav>
+  </header>
 
-    <section id="distribution-panel" class="panel reveal delay-2 hidden">
-      <div class="two-col">
-        <div>
-          <div class="panel-head tight">
-            <h2>Label Distribution</h2>
-            <p>Batch-level sentiment mix.</p>
-          </div>
-          <div id="distribution-bars" class="distribution-bars"></div>
+  <main class="page-wrap">
+    <section class="product-grid">
+      <aside class="card product-left">
+        <div class="product-image-frame">
+          <img id="main-product-image" src="" alt="Main product image" />
         </div>
-        <div>
-          <div class="panel-head tight">
-            <h2>Attention Queue</h2>
-            <p>Highest risk rows first.</p>
+        <div id="product-thumb-grid" class="thumb-grid">
+          <button class="thumb active" type="button"></button>
+        </div>
+        <button id="run-sample-from-left" class="outline-btn" type="button">Refresh batch</button>
+      </aside>
+
+      <section class="card product-center">
+        <p class="breadcrumbs">Giftcards &gt; NLP &gt; Review Intelligence</p>
+        <h1>NLP Project: Sentiment Analysis for E-commerce Reviews using Machine Learning Techniques</h1>
+        <p class="byline">by SkyDom+</p>
+        <p class="byline-sub">Supervior by Dr. Pham Quang Nhat Minh</p>
+        <div class="rating-line">
+          <span id="product-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+          <span id="product-rating-value">4.7 out of 5</span>
+          <span id="product-rating-count">(0 reviews)</span>
+        </div>
+        <hr />
+        <p class="description">
+          Use this console like an e-commerce product page: run batch review analysis, inspect
+          customer-style cards, and inspect each selected review in detail.
+        </p>
+        <ul class="highlights">
+          <li>Classic model output with confidence, fallback reason, and issue labels.</li>
+          <li>Optional transformer comparison for mismatch detection.</li>
+          <li>Review feed, rating breakdown, and one-click detail analysis per review.</li>
+        </ul>
+        <div id="status-strip" class="status-strip"></div>
+      </section>
+
+      <aside class="product-right">
+        <article class="card manager-insight-card">
+          <h3>Manager Insight Panel</h3>
+          <p class="muted">
+            Pie chart of 9 classified issue labels from the same current batch shown in top reviews.
+          </p>
+          <div class="ops-pie-layout">
+            <div id="ops-label-pie" class="ops-label-pie">
+              <div class="ops-pie-center">
+                <p id="ops-total-flags">0</p>
+                <span>issue hits</span>
+              </div>
+            </div>
+            <div id="ops-label-legend" class="ops-label-legend"></div>
           </div>
+          <p id="ops-batch-note" class="muted">Batch loading...</p>
+          <p id="run-message" class="run-message">System ready.</p>
+        </article>
+      </aside>
+    </section>
+
+    <nav class="review-tabs">
+      <a href="#">Top</a>
+      <a href="#">About this item</a>
+      <a href="#">Similar</a>
+      <a href="#">From the Brand</a>
+      <a href="#">From the Author</a>
+      <a class="active" href="#">Reviews</a>
+    </nav>
+
+    <section class="review-grid">
+      <aside class="left-column">
+        <article class="card">
+          <h3>Customer reviews</h3>
+          <p id="left-overall-score" class="overall-score">4.7 out of 5</p>
+          <p id="left-rating-count" class="muted">0 global ratings</p>
+          <div id="rating-bars" class="rating-bars"></div>
+          <a class="muted-link" href="#">How customer reviews and ratings work</a>
+        </article>
+
+        <article class="card">
+          <h3>Review this product</h3>
+          <p class="muted">Share your thoughts with other customers.</p>
+          <button id="write-review-btn" class="outline-btn" type="button">Write a customer review</button>
+        </article>
+
+        <article id="issues-panel" class="card hidden">
+          <h3>Issue Summary</h3>
           <div class="table-wrap small">
-            <table id="attention-table">
+            <table id="issues-table">
               <thead>
                 <tr>
-                  <th>Label</th>
-                  <th>Risk</th>
-                  <th>P(+)</th>
-                  <th>Issue</th>
-                  <th>Text</th>
+                  <th>Issue Label</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-        </div>
-      </div>
+        </article>
+      </aside>
+
+      <section class="center-column">
+        <article class="card">
+          <h3>Customers say</h3>
+          <p id="customer-say-text" class="customer-say-text">
+            System is loading current batch to generate owner insights.
+          </p>
+          <p class="muted">AI generated from prediction outputs</p>
+          <div id="customer-say-tags" class="tag-row"></div>
+        </article>
+
+        <article id="summary-panel" class="card hidden">
+          <h3>Batch Metrics</h3>
+          <div id="kpi-grid" class="kpi-grid"></div>
+        </article>
+
+        <article class="card">
+          <div class="row-between">
+            <h3>Top reviews from current batch</h3>
+            <span id="mismatch-note" class="muted"></span>
+          </div>
+          <div id="reviews-feed" class="reviews-feed current-batch-feed">
+            <p class="muted">Loading current batch reviews...</p>
+          </div>
+          <section id="dataset-reviews-block" class="dataset-reviews-block">
+            <div class="row-between">
+              <h3>Historical reviews from dataset</h3>
+              <span id="dataset-review-count" class="muted"></span>
+            </div>
+            <p id="dataset-review-source" class="muted"></p>
+            <div id="dataset-reviews-feed" class="reviews-feed dataset-reviews-feed">
+              <p class="muted">Loading dataset reviews...</p>
+            </div>
+          </section>
+        </article>
+      </section>
+
+      <aside class="right-column">
+        <article id="distribution-panel" class="card hidden">
+          <h3>Rating Breakdown</h3>
+          <div id="distribution-bars" class="distribution-bars"></div>
+        </article>
+
+        <article id="single-review-panel" class="card single-review-panel">
+          <h3>Selected Review Analysis</h3>
+          <p id="single-review-hint" class="muted">
+            Click Analyze on a review card to inspect prediction details for that exact review.
+          </p>
+          <div id="single-review-content"></div>
+        </article>
+      </aside>
     </section>
 
-    <section id="results-panel" class="panel reveal delay-3 hidden">
-      <div class="panel-head">
-        <h2>Predictions</h2>
-        <p>Classic prediction rows with optional transformer columns.</p>
+    <section class="recommended-section card">
+      <div class="row-between">
+        <h3>Products related to this item</h3>
+        <a href="#">See more</a>
       </div>
-      <div class="toolbar">
-        <span id="mismatch-note" class="hint"></span>
-        <button id="export-btn" class="btn ghost" type="button">Export CSV</button>
-      </div>
-      <div class="table-wrap">
-        <table id="results-table">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <div id="recommended-grid" class="recommended-grid"></div>
     </section>
+  </main>
 
-    <section id="issues-panel" class="panel reveal delay-3 hidden">
-      <div class="panel-head">
-        <h2>Issue Summary</h2>
-        <p>Aggregated learned issue labels in current batch.</p>
-      </div>
-      <div class="table-wrap small">
-        <table id="issues-table">
-          <thead>
-            <tr>
-              <th>Issue Label</th>
-              <th>Count</th>
-              <th>Avg Confidence</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20260312m"></script>
 </body>
 </html>
+
 
