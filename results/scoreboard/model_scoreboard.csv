@@ -31,4 +31,4 @@ syllabus_bench_sentiment,complement_nb,test,0.952112676056338,0.5095157339363106
 syllabus_bench_sentiment,perceptron,test,0.828169014084507,0.6837209302325581,0.7945945945945946,,,,,0.17183098591549295,results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv
 syllabus_bench_sentiment,svd_semantic_logreg,test,0.9197183098591548,0.50143981570359,0.788218963123906,,,,,0.08028169014084519,results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv
 syllabus_bench_sentiment,ffnn_mlp_svd,test,0.7295774647887324,0.7987663839629915,0.7424394438870575,,,,,0.2704225352112676,results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv
-transformer_sentiment,distilbert_finetune,test,0.8327464788732394,0.8217512161223072,0.8305239499929765,,,0.9104532653882258,,0.16725352112676062,results\nlp_ext\nlp_metrics.csv
+transformer_sentiment,distilbert_finetune,test,0.8531690140845071,0.7986156888595913,0.8416701403362512,,,0.9096821778194984,,0.14683098591549293,results\nlp_ext\nlp_metrics.csv

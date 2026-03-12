@@ -17,7 +17,7 @@
 \renewcommand{\arraystretch}{1.15}
 
 \title{Báo cáo Dự án Xử lý Ngôn ngữ Tự nhiên\\
-Bản đồng bộ theo mã nguồn hiện tại (11/03/2026)}
+Bản đồng bộ theo mã nguồn hiện tại (12/03/2026)}
 \author{Team SkyDom+}
 \date{Tháng 3 năm 2026}
 
@@ -47,13 +47,13 @@ Pham Quang Tung & 22BA13320 \\
 Khuong Bao Duc & 22BA13077 \\
 \end{tabular}\par}
 \vfill
-{\large Ngày cập nhật: 11/03/2026\par}
+{\large Ngày cập nhật: 12/03/2026\par}
 \end{titlepage}
 
 \pagenumbering{roman}
 
 \begin{abstract}
-Báo cáo này viết lại theo đúng cấu trúc paper và đồng bộ tuyệt đối với trạng thái repository hiện tại (commit \texttt{d9c7e6f}). Hệ thống gồm ba nhiệm vụ: phân loại cảm xúc nhị phân có cơ chế bất định, trích xuất issue đa nhãn, và mở rộng bằng transformer. Dữ liệu nguồn gồm 152.410 review; bộ dữ liệu issue đã gán nhãn gồm 19.000 dòng. Với sentiment cổ điển, biến thể V6 (word 1--2 + char 3--5 + negation, class weight w10) đạt test \texttt{precision\_0=0.677}, \texttt{recall\_0=0.932}, \texttt{F2\_0=0.867}, coverage 0.885 ở dải ngưỡng 0.40/0.60. Mô hình transformer sentiment đạt \texttt{accuracy=0.967}, \texttt{precision\_0=0.822}, \texttt{recall\_0=0.833}, \texttt{F2\_0=0.831}, coverage 0.910. Với issue extraction, OVR Logistic (calibrated) đạt test \texttt{micro-F1=0.783}, \texttt{macro-F1=0.389}, subset accuracy 0.635 trên 3.800 mẫu test. Gói nâng cấp không thêm dữ liệu mở rộng thêm benchmark giáo trình, n-gram LM, bootstrap/significance, và thử nghiệm transformer issue + hybrid routing. Toàn bộ số liệu trong báo cáo lấy trực tiếp từ artifact trong thư mục \texttt{results/}.
+Báo cáo này viết lại theo đúng cấu trúc paper và đồng bộ tuyệt đối với trạng thái repository hiện tại (commit \texttt{d9c7e6f}). Hệ thống gồm ba nhiệm vụ: phân loại cảm xúc nhị phân có cơ chế bất định, trích xuất issue đa nhãn, và mở rộng bằng transformer. Dữ liệu nguồn gồm 152.410 review; bộ dữ liệu issue đã gán nhãn gồm 19.000 dòng. Với sentiment cổ điển, biến thể V6 (word 1--2 + char 3--5 + negation, class weight w10) đạt test \texttt{precision\_0=0.677}, \texttt{recall\_0=0.932}, \texttt{F2\_0=0.867}, coverage 0.885 ở dải ngưỡng 0.40/0.60. Mô hình transformer sentiment đạt \texttt{accuracy=0.966}, \texttt{precision\_0=0.799}, \texttt{recall\_0=0.853}, \texttt{F2\_0=0.842}, coverage 0.910. Với issue extraction trên tập test 3.800 mẫu, OVR Logistic đạt \texttt{micro-F1=0.780}, \texttt{macro-F1=0.387}; OVR LinearSVM đạt \texttt{micro-F1=0.771}, \texttt{macro-F1=0.405}; trong khi dummy baseline có micro-F1 cao (\texttt{0.809}) nhưng macro-F1 rất thấp (\texttt{0.101}) do lệch nhãn \texttt{other}. Gói nâng cấp không thêm dữ liệu mở rộng thêm benchmark giáo trình, n-gram LM, bootstrap/significance, và thử nghiệm transformer issue + hybrid routing. Toàn bộ số liệu trong báo cáo lấy trực tiếp từ artifact trong thư mục \texttt{results/}.
 \end{abstract}
 
 \tableofcontents
@@ -152,7 +152,7 @@ Trong trạng thái hiện tại, mô hình tốt nhất là sparse data-driven.
 Backbone sentiment cổ điển là Logistic Regression. Class-weight được dò trên \texttt{none}, \texttt{balanced}, \texttt{w2}, \texttt{w5}, \texttt{w10}. Các biến thể V0--V7 phản ánh bật/tắt xử lý và đặc trưng.
 
 \subsection{Mô hình issue extraction}
-Issue extraction dùng OVR Logistic Regression có hiệu chỉnh xác suất (sigmoid) và tuning ngưỡng theo từng nhãn. OVR LinearSVM là baseline so sánh.
+Issue extraction dùng OVR Logistic Regression có hiệu chỉnh xác suất (sigmoid) và tuning ngưỡng theo từng nhãn. OVR LinearSVM và mô hình blend xác suất LR+SVM (\texttt{ovr\_blend\_lr\_svm}) là nhóm so sánh mạnh, đồng thời có thêm hai dummy baseline (\texttt{dummy\_labelset\_majority}, \texttt{dummy\_label\_prior}) để kiểm tra sanity.
 
 \subsection{Mở rộng Transformer}
 Khối transformer dùng HuggingFace fine-tuning (họ DistilBERT theo script hiện tại) và đánh giá cùng chính sách ngưỡng bất định để so sánh trực tiếp với mô hình cổ điển.
@@ -252,8 +252,8 @@ Bảng \ref{tab:tf_metrics_vi} tóm tắt kết quả sentiment transformer.
 \toprule
 Tập & Accuracy & F1 & Precision\_0 & Recall\_0 & F2\_0 & Coverage \\
 \midrule
-Validation & 0,968 & 0,982 & 0,821 & 0,854 & 0,847 & 0,908 \\
-Test & 0,967 & 0,982 & 0,822 & 0,833 & 0,831 & 0,910 \\
+Validation & 0,966 & 0,981 & 0,793 & 0,870 & 0,854 & 0,906 \\
+Test & 0,966 & 0,981 & 0,799 & 0,853 & 0,842 & 0,910 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -290,11 +290,16 @@ Bảng \ref{tab:issue_overall_vi} trình bày kết quả pipeline issue chính 
 \toprule
 Mô hình & Micro-F1 & Macro-F1 & Subset accuracy & Hamming loss \\
 \midrule
-OVR Logistic (test) & 0,783 & 0,389 & 0,635 & 0,0578 \\
-OVR LinearSVM (test) & 0,770 & 0,392 & 0,615 & 0,0628 \\
+OVR Logistic (test) & 0,780 & 0,387 & 0,634 & 0,0585 \\
+OVR LinearSVM (test) & 0,771 & 0,405 & 0,617 & 0,0623 \\
+OVR Blend LR+SVM (test) & 0,768 & 0,391 & 0,626 & 0,0620 \\
+Dummy labelset majority (test) & 0,809 & 0,101 & 0,811 & 0,0438 \\
+Dummy label prior (test) & 0,809 & 0,101 & 0,811 & 0,0438 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Dummy baseline có thể cao ở micro-F1 và subset accuracy vì gần như luôn dự đoán nhãn \texttt{other}; macro-F1 cho thấy chúng không xử lý tốt các nhãn thiểu số.
 
 \subsection{Chênh lệch theo từng nhãn}
 Bảng \ref{tab:issue_delta_vi} so sánh F1 từng nhãn giữa SVM và Logistic trên test.
@@ -307,21 +312,21 @@ Bảng \ref{tab:issue_delta_vi} so sánh F1 từng nhãn giữa SVM và Logistic
 \toprule
 Nhãn & Logistic F1 & SVM F1 & $\Delta$ \\
 \midrule
-delivery\_shipping & 0,442 & 0,447 & +0,005 \\
-redemption\_activation & 0,326 & 0,304 & -0,022 \\
-product\_quality & 0,309 & 0,279 & -0,030 \\
-customer\_service & 0,254 & 0,175 & -0,079 \\
+delivery\_shipping & 0,442 & 0,446 & +0,004 \\
+redemption\_activation & 0,298 & 0,287 & -0,010 \\
+product\_quality & 0,307 & 0,282 & -0,025 \\
+customer\_service & 0,225 & 0,168 & -0,057 \\
 refund\_return & 0,435 & 0,387 & -0,048 \\
-usability & 0,463 & 0,457 & -0,006 \\
-value\_price & 0,257 & 0,313 & +0,056 \\
-fraud\_scam & 0,103 & 0,256 & +0,154 \\
+usability & 0,459 & 0,462 & +0,003 \\
+value\_price & 0,258 & 0,313 & +0,056 \\
+fraud\_scam & 0,150 & 0,391 & +0,241 \\
 other & 0,911 & 0,911 & +0,001 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Chiến lược ngưỡng trong bối cảnh đa nhãn}
-Ngưỡng theo từng nhãn được trình bày trong Bảng \ref{tab:issue_thresholds_vi}. Các nhãn hiếm được đặt ngưỡng thấp hơn để tăng recall; riêng \texttt{fraud\_scam} dùng ngưỡng cao hơn.
+Ngưỡng theo từng nhãn của pipeline chính \texttt{ovr\_logreg} được trình bày trong Bảng \ref{tab:issue_thresholds_vi}. Các nhãn hiếm được đặt ngưỡng thấp hơn để tăng recall; \texttt{fraud\_scam} và \texttt{other} được giữ ngưỡng thận trọng hơn.
 
 \begin{table}[H]
 \centering
@@ -334,12 +339,12 @@ Nhãn & Ngưỡng \\
 delivery\_shipping & 0,25 \\
 redemption\_activation & 0,10 \\
 product\_quality & 0,10 \\
-customer\_service & 0,15 \\
+customer\_service & 0,10 \\
 refund\_return & 0,15 \\
 usability & 0,10 \\
 value\_price & 0,15 \\
 fraud\_scam & 0,50 \\
-other & 0,25 \\
+other & 0,30 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -430,7 +435,7 @@ Applications of LLMs & 90 \\
 \end{table}
 
 \section{Thảo luận Classic so với Transformer}
-Ở bài toán sentiment, transformer vượt trội về accuracy tổng thể và precision\_0 (0,822 so với 0,677), trong khi classic V6 tốt hơn về recall\_0 (0,932 so với 0,833) và F2\_0 (0,867 so với 0,831). Khi dùng cùng dải ngưỡng 0,40/0,60, transformer có selective precision cao hơn nhưng selective recall thấp hơn classic.
+Ở bài toán sentiment, transformer vượt trội về accuracy tổng thể và precision\_0 (0,799 so với 0,677), trong khi classic V6 tốt hơn về recall\_0 (0,932 so với 0,853) và F2\_0 (0,867 so với 0,842). Khi dùng cùng dải ngưỡng 0,40/0,60, transformer có selective precision cao hơn nhưng selective recall thấp hơn classic.
 
 Với issue extraction, mô hình classic đa nhãn hiện vẫn mạnh hơn transformer issue trong trạng thái code hiện tại (micro-F1 0,792 so với 0,646 theo file so sánh hybrid). Hybrid route cải thiện so với transformer thuần nhưng vẫn chưa vượt classic.
 

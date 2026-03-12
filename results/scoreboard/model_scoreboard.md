@@ -36,7 +36,7 @@ Generated from existing experiment artifacts.
 | syllabus_bench_sentiment    | perceptron                          | test    |   0.828169  |     0.683721  |   0.794595  | nan        | nan        | nan        |       nan   |              0.171831  | results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv |
 | syllabus_bench_sentiment    | svd_semantic_logreg                 | test    |   0.919718  |     0.50144   |   0.788219  | nan        | nan        | nan        |       nan   |              0.0802817 | results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv |
 | syllabus_bench_sentiment    | ffnn_mlp_svd                        | test    |   0.729577  |     0.798766  |   0.742439  | nan        | nan        | nan        |       nan   |              0.270423  | results\nlp_ext\syllabus_upgrade\nlp_syllabus_bench_test_summary.csv |
-| transformer_sentiment       | distilbert_finetune                 | test    |   0.832746  |     0.821751  |   0.830524  | nan        | nan        |   0.910453 |       nan   |              0.167254  | results\nlp_ext\nlp_metrics.csv                                      |
+| transformer_sentiment       | distilbert_finetune                 | test    |   0.853169  |     0.798616  |   0.84167   | nan        | nan        |   0.909682 |       nan   |              0.146831  | results\nlp_ext\nlp_metrics.csv                                      |
 
 Notes:
 - `missed_negative_rate = 1 - recall_0`.

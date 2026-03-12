@@ -2,6 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{geometry}
+\geometry{margin=1in, headheight=15pt}
 \usepackage{setspace}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -10,34 +11,73 @@
 \usepackage{tabularx}
 \usepackage{longtable}
 \usepackage{array}
+\usepackage[svgnames,table]{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{microtype}
+\usepackage{mathpazo}
+\usepackage{caption}
+\usepackage{tcolorbox}
 \usepackage{hyperref}
-\geometry{margin=1in}
+
+\definecolor{primaryblue}{RGB}{20, 50, 120}
+\definecolor{linkblue}{RGB}{0, 80, 160}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primaryblue,
+    filecolor=magenta,
+    urlcolor=linkblue,
+    citecolor=primaryblue,
+    pdftitle={Sentiment Analysis for E-commerce Reviews},
+    pdfauthor={Team SkyDom+}
+}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{primaryblue}}{\thesection}{1em}{}[{\color{primaryblue}\titlerule[0.8pt]}]
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{primaryblue!85}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{primaryblue!85}}{\thesubsubsection}{1em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textcolor{gray}{\small NLP Project Report: Sentiment Analysis}}
+\rhead{\textcolor{gray}{\small Team SkyDom+}}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\captionsetup{labelfont={bf,color=primaryblue}, textfont=it, margin=10pt}
+
 \onehalfspacing
 \setcounter{tocdepth}{2}
-\renewcommand{\arraystretch}{1.15}
-
-\title{Natural Language Processing Project Report\\
-Codebase-Synchronized Revision (March 12, 2026)}
-\author{Team SkyDom+}
-\date{March 2026}
+\renewcommand{\arraystretch}{1.25}
 
 \begin{document}
 
 \begin{titlepage}
 \centering
-\vspace*{1.0cm}
-{\LARGE Sentiment Analysis and Issue Extraction for E-commerce Reviews\par}
-\vspace{0.2cm}
-{\LARGE with Classic NLP and Transformer Extensions\par}
+\vspace*{0.1cm}
+\includegraphics[width=0.7\textwidth]{\detokenize{results/dm2_steps/01_rating_distribution.png}}\par
+\vspace{1.0cm}
+{\LARGE\bfseries\color{primaryblue} Sentiment Analysis for E-commerce Reviews\par}
+\vspace{0.3cm}
+{\Large\color{primaryblue!80} using Machine Learning Techniques.\par}
 \vspace{0.8cm}
-{\Large Paper-form Report Aligned with Current Code State\par}
+{\Large\bfseries Case Study Report\par}
 \vspace{0.8cm}
-{\large Team: Team SkyDom+\par}
+{\large\bfseries Team: SkyDom+\par}
 \vspace{0.3cm}
 {\large Group members:\par}
-\vspace{0.4cm}
-{\large
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.8cm} >{\raggedright\arraybackslash}p{2.7cm}@{}}
+\vspace{0.3cm}
+\begin{center}
+\large
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{>{\raggedright\arraybackslash}p{6.0cm} >{\raggedright\arraybackslash}p{3.0cm}}
+\toprule
+\textbf{Name} & \textbf{ID} \\
+\midrule
 Nguyen Nhu Tien Tuan & 22BA13314 \\
 Tran Hien Chuong & 22BA13056 \\
 Do Gia Bao & 22BA13042 \\
@@ -45,15 +85,19 @@ Bui The Anh & 22BA13007 \\
 Le Duc An & 22BA13002 \\
 Pham Quang Tung & 22BA13320 \\
 Khuong Bao Duc & 22BA13077 \\
-\end{tabular}\par}
+\bottomrule
+\end{tabular}
+\end{center}
 \vfill
-{\large Updated on March 12, 2026\par}
+{\large\bfseries March 12, 2026\par}
 \end{titlepage}
 
 \pagenumbering{roman}
 
+\newpage
+\renewcommand{\abstractname}{\Large\bfseries\color{primaryblue} Abstract}
 \begin{abstract}
-This report rewrites the project paper in strict alignment with the current repository state (commit \texttt{d9c7e6f}) while preserving a formal NLP paper structure. The project addresses three tasks: binary sentiment classification with uncertainty control, multi-label issue extraction, and transformer-based extension. The source corpus contains 152,410 reviews; the issue annotation set contains 19,000 rows. In classic sentiment, variant V6 (word 1--2 + char 3--5 + negation, class weight w10) reaches test \texttt{precision\_0=0.677}, \texttt{recall\_0=0.932}, and \texttt{F2\_0=0.867}, with selective coverage 0.885 under threshold band 0.40/0.60. The transformer sentiment extension reaches \texttt{accuracy=0.967}, \texttt{precision\_0=0.822}, \texttt{recall\_0=0.833}, and \texttt{F2\_0=0.831}, with coverage 0.910. For issue extraction on the 3,800-row split, OVR Logistic reaches \texttt{micro-F1=0.780} and \texttt{macro-F1=0.387}, OVR LinearSVM reaches \texttt{micro-F1=0.771} and \texttt{macro-F1=0.405}, while dummy labelset baselines show high micro-F1 (\texttt{0.809}) but very low macro-F1 (\texttt{0.101}) due to majority-label dominance. The no-new-data upgrade package adds syllabus baselines, n-gram language modeling, evaluation-rigor artifacts, and transformer issue-routing experiments. All quantitative statements are sourced from saved files under \texttt{results/}.
+This report rewrites the project paper in strict alignment with the current repository state (commit \texttt{d9c7e6f}) while preserving a formal NLP paper structure. The project addresses three tasks: binary sentiment classification with uncertainty control, multi-label issue extraction, and transformer-based extension. The source corpus contains 152,410 reviews; the issue annotation set contains 19,000 rows. In classic sentiment, variant V6 (word 1--2 + char 3--5 + negation, class weight w10) reaches test \texttt{precision\_0=0.677}, \texttt{recall\_0=0.932}, and \texttt{F2\_0=0.867}, with selective coverage 0.885 under threshold band 0.40/0.60. The transformer sentiment extension reaches \texttt{accuracy=0.966}, \texttt{precision\_0=0.799}, \texttt{recall\_0=0.853}, and \texttt{F2\_0=0.842}, with coverage 0.910. For issue extraction on the 3,800-row split, OVR Logistic reaches \texttt{micro-F1=0.780} and \texttt{macro-F1=0.387}, OVR LinearSVM reaches \texttt{micro-F1=0.771} and \texttt{macro-F1=0.405}, while dummy labelset baselines show high micro-F1 (\texttt{0.809}) but very low macro-F1 (\texttt{0.101}) due to majority-label dominance. The no-new-data upgrade package adds syllabus baselines, n-gram language modeling, evaluation-rigor artifacts, and transformer issue-routing experiments. All quantitative statements are sourced from saved files under \texttt{results/}.
 \end{abstract}
 
 \tableofcontents
@@ -254,8 +298,8 @@ Table \ref{tab:tf_metrics} summarizes transformer sentiment metrics.
 \toprule
 Split & Accuracy & F1 & Precision\_0 & Recall\_0 & F2\_0 & Coverage \\
 \midrule
-Validation & 0.968 & 0.982 & 0.821 & 0.854 & 0.847 & 0.908 \\
-Test & 0.967 & 0.982 & 0.822 & 0.833 & 0.831 & 0.910 \\
+Validation & 0.966 & 0.981 & 0.793 & 0.870 & 0.854 & 0.906 \\
+Test & 0.966 & 0.981 & 0.799 & 0.853 & 0.842 & 0.910 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -437,7 +481,7 @@ Applications of LLMs & 90 \\
 \end{table}
 
 \section{Classic Versus Transformer Discussion}
-On sentiment classification, transformer improves overall accuracy and negative precision (0.822 vs 0.677), while classic V6 remains stronger on negative recall (0.932 vs 0.833) and F2\_0 (0.867 vs 0.831). Under the same threshold band (0.40/0.60), transformer yields higher selective precision but lower selective recall than classic.
+On sentiment classification, transformer improves overall accuracy and negative precision (0.799 vs 0.677), while classic V6 remains stronger on negative recall (0.932 vs 0.853) and F2\_0 (0.867 vs 0.842). Under the same threshold band (0.40/0.60), transformer yields higher selective precision but lower selective recall than classic.
 
 For issue extraction, Table \ref{tab:issue_fair} reports the dedicated fair-split benchmark. The classic issue model remains strongest; hybrid routing improves over pure transformer but still trails the classic setting.
 
@@ -647,3 +691,5 @@ Selective Classification for Deep Neural Networks.
 \end{figure}
 
 \end{document}
+
+

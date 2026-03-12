@@ -58,7 +58,12 @@ def _decisions_from_probs(probs: np.ndarray, texts: list, thresholds) -> pd.Data
 
 
 def _baseline_predict(texts: list, enable_abbrev_norm: bool, data_path: Path, output_dir: Path):
-    vec, selector, model = _load_trained_artifacts()
+    # dm2_steps loader now returns (vectorizer, selector, model, meta)
+    # Keep backward compatibility if the return shape changes again.
+    loaded = _load_trained_artifacts()
+    vec = selector = model = None
+    if isinstance(loaded, tuple) and len(loaded) >= 3:
+        vec, selector, model = loaded[:3]
     if vec is None or selector is None or model is None:
         config = DM2Config(
             data_path=data_path,
