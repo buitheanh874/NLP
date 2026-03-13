@@ -16,7 +16,7 @@ def test_sentiment_artifact_schema_regression():
 
 
 def test_issue_artifact_schema_regression():
-    path = ROOT / "results" / "issue_steps" / "02_metrics_overall.csv"
+    path = ROOT / "result" / "issue_steps" / "02_metrics_overall.csv"
     assert path.exists(), f"Missing artifact: {path}"
     df = pd.read_csv(path)
     required = {"split", "model", "micro_f1", "macro_f1"}
