@@ -124,7 +124,7 @@ Demo smoke inputs and expected behavior:
 - `docs/demo_inputs.txt`
 - `docs/expected_outputs.md`
 
-FastAPI endpoints:
+FastAPI endpoints:no
 
 - `GET /api/health`
 - `GET /api/status?include_transformer=false`
