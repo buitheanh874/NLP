@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from webapp.predictor import analyze_reviews, model_status
+from src.issue_steps.common import ISSUE_LABELS as ISSUE_LABEL_COLUMNS
 
 
 class PredictRequest(BaseModel):
@@ -34,17 +35,6 @@ STATIC_DIR = APP_DIR / "static"
 PROJECT_DIR = APP_DIR.parent
 ITEMS_DIR = PROJECT_DIR / "items"
 DOWNLOADS_DIR = Path.home() / "Downloads"
-ISSUE_LABEL_COLUMNS = [
-    "delivery_shipping",
-    "redemption_activation",
-    "product_quality",
-    "customer_service",
-    "refund_return",
-    "usability",
-    "value_price",
-    "fraud_scam",
-    "other",
-]
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 if ITEMS_DIR.exists():

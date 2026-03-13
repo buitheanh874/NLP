@@ -18,6 +18,12 @@ from demo import (
     load_models,
     predict_sentiment as predict_classic_sentiment,
 )
+from webapp.predictor import (
+    LABEL_PRIORITY,
+    build_risk_score,
+    summarize_issue_labels,
+    to_float,
+)
 
 
 APP_TITLE = "Review Ops Console"
@@ -33,13 +39,6 @@ DEFAULT_INPUT = "\n".join(
         "good but late delivery",
     ]
 )
-
-LABEL_PRIORITY = {
-    "NEGATIVE": 4,
-    "NEEDS_ATTENTION": 3,
-    "UNCERTAIN": 2,
-    "POSITIVE": 1,
-}
 
 
 def inject_styles() -> None:
@@ -301,40 +300,7 @@ def load_transformer_bundle(base_dir: Path):
     return tokenizer, model
 
 
-def to_float(value: Any) -> Optional[float]:
-    try:
-        numeric_value = float(value)
-    except (TypeError, ValueError):
-        return None
-    if pd.isna(numeric_value):
-        return None
-    return numeric_value
 
-
-def summarize_issue_labels(result: Dict[str, Any]) -> str:
-    issue_rows = result.get("issue_labels", [])
-    if issue_rows:
-        return ", ".join(f"{row['label']}:{row['confidence']:.2f}" for row in issue_rows)
-    fallback = result.get("issue_tags", [])
-    if fallback:
-        return ", ".join(fallback)
-    return "-"
-
-
-def build_risk_score(label: str, probability: Optional[float]) -> float:
-    base = LABEL_PRIORITY.get(label, 0) * 100.0
-    prob = 0.5 if probability is None else max(0.0, min(1.0, probability))
-
-    if label == "NEGATIVE":
-        severity = (1.0 - prob) * 20.0
-    elif label == "NEEDS_ATTENTION":
-        severity = (0.8 - abs(prob - 0.5)) * 15.0
-    elif label == "UNCERTAIN":
-        severity = 10.0
-    else:
-        severity = prob * 5.0
-
-    return round(base + max(severity, 0.0), 1)
 
 
 def build_classic_row(text: str, result: Dict[str, Any]) -> Dict[str, Any]:
