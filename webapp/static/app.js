@@ -338,6 +338,36 @@ function niceNameFromFile(fileName, index) {
   return `NLP Book Item ${index + 1} - ${short}`;
 }
 
+function itemDisplayName(item, index) {
+  const value = String(item?.display_name || "").trim();
+  if (value) return value;
+  return niceNameFromFile(item?.name, index);
+}
+
+function itemSubtitle(item) {
+  const value = String(item?.subtitle || "").trim();
+  if (value) return value;
+  return "Prime eligible | Free returns";
+}
+
+function itemBadge(item) {
+  const value = String(item?.badge || "").trim();
+  if (value) return value;
+  return "Prime";
+}
+
+function itemPriceVnd(item, index) {
+  const parsed = Number(item?.price_vnd);
+  if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
+  return 349000 + index * 37000;
+}
+
+function itemRating(item, index) {
+  const parsed = Number(item?.rating);
+  if (Number.isFinite(parsed) && parsed > 0) return Math.max(1, Math.min(5, parsed));
+  return Math.max(3.8, Math.min(4.9, 4.2 + (index % 4) * 0.15));
+}
+
 function renderRecommendedProducts(items) {
   if (!dom.recommendedGrid) return;
   if (!items.length) {
@@ -348,12 +378,16 @@ function renderRecommendedProducts(items) {
   dom.recommendedGrid.innerHTML = items
     .slice(0, 10)
     .map((item, idx) => {
-      const price = (349000 + idx * 37000).toLocaleString("vi-VN");
+      const price = itemPriceVnd(item, idx).toLocaleString("vi-VN");
+      const rating = itemRating(item, idx);
+      const ratingStars = starText(Math.round(rating));
       return `
       <article class="recommended-card">
+        <p class="recommended-badge">${escapeHtml(itemBadge(item))}</p>
         <img src="${item.url}" alt="${item.name}" />
-        <p class="recommended-title">${niceNameFromFile(item.name, idx)}</p>
-        <p class="recommended-meta">Prime eligible | Free returns</p>
+        <p class="recommended-title">${escapeHtml(itemDisplayName(item, idx))}</p>
+        <p class="recommended-meta">${escapeHtml(itemSubtitle(item))}</p>
+        <p class="recommended-rating">${ratingStars} ${rating.toFixed(1)}</p>
         <p class="recommended-price">VND ${price}</p>
       </article>
       `;
@@ -438,10 +472,7 @@ function renderSingleReviewAnalysis(row, displayIndex = 0) {
     <table class="single-review-table">
       <tbody>
         <tr><th>Label</th><td>${labelPill(row.classic_label)}</td></tr>
-        <tr><th>Confidence</th><td>${escapeHtml(row.classic_confidence || "N/A")} | P(+): ${formatProb(row.classic_probability)}</td></tr>
-        <tr><th>Risk Score</th><td>${Number(row.risk_score ?? 0).toFixed(1)}</td></tr>
         <tr><th>Issue Labels</th><td>${escapeHtml(row.issue_summary || "-")}</td></tr>
-        <tr><th>Review Text</th><td><div class="single-review-text-cell">${escapeHtml(row.text || "")}</div></td></tr>
       </tbody>
     </table>
   `;

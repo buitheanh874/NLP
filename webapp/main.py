@@ -35,10 +35,48 @@ STATIC_DIR = APP_DIR / "static"
 PROJECT_DIR = APP_DIR.parent
 ITEMS_DIR = PROJECT_DIR / "items"
 DOWNLOADS_DIR = Path.home() / "Downloads"
+ITEM_NAME_PRESETS = [
+    "Amazon Gift Card - Floral Sleeve",
+    "Amazon Gift Card - Birthday Edition",
+    "Amazon Gift Card - Thank You Theme",
+    "Amazon Gift Card - Elegant Gold Pack",
+    "Amazon Gift Card - Celebration Box",
+    "Amazon Gift Card - Premium Envelope",
+    "Amazon Gift Card - Holiday Special",
+    "Amazon Gift Card - Minimalist Pack",
+    "Amazon Gift Card - Family Gift Bundle",
+]
+ITEM_SUBTITLE_PRESETS = [
+    "Fast delivery and ready-to-gift packaging.",
+    "Top pick for birthdays and quick gifting.",
+    "Professional style for business gifting.",
+    "Premium print with envelope included.",
+    "Popular seasonal design.",
+    "Clean design and easy redemption.",
+    "Great for teams and family events.",
+    "Simple and modern card look.",
+    "Great value bundle for repeat gifts.",
+]
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-if ITEMS_DIR.exists():
-    app.mount("/items", StaticFiles(directory=ITEMS_DIR), name="items")
+ITEMS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/items", StaticFiles(directory=ITEMS_DIR), name="items")
+
+
+def _item_meta(file_name: str, index: int) -> dict:
+    title = ITEM_NAME_PRESETS[index % len(ITEM_NAME_PRESETS)]
+    subtitle = ITEM_SUBTITLE_PRESETS[index % len(ITEM_SUBTITLE_PRESETS)]
+    price_vnd = 149000 + index * 25000
+    rating = round(min(4.9, 4.3 + (index % 5) * 0.12), 1)
+    badge = "Best Seller" if index in {0, 3, 6} else "Prime"
+    return {
+        "display_name": title,
+        "subtitle": subtitle,
+        "price_vnd": int(price_vnd),
+        "rating": float(rating),
+        "badge": badge,
+        "file_name": file_name,
+    }
 
 
 def _candidate_review_paths() -> List[Path]:
@@ -166,24 +204,23 @@ def status(include_transformer: bool = False):
 
 @app.get("/api/catalog")
 def catalog():
-    if not ITEMS_DIR.exists():
-        return {"items": []}
-
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
     files = [
         item
         for item in sorted(ITEMS_DIR.iterdir(), key=lambda x: x.name.lower())
         if item.is_file() and item.suffix.lower() in allowed
     ]
-    return {
-        "items": [
+    items = []
+    for idx, file in enumerate(files):
+        meta = _item_meta(file.name, idx)
+        items.append(
             {
                 "name": file.name,
                 "url": f"/items/{file.name}",
+                **meta,
             }
-            for file in files
-        ]
-    }
+        )
+    return {"items": items}
 
 
 @app.get("/api/review_pool")
